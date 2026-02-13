@@ -1,0 +1,36 @@
+{
+  "// INSTRUÇÃO": "Adicione estas devDependencies ao package.json do projeto real",
+  "// INSTALL": "npm install -D eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-sonarjs eslint-plugin-security eslint-plugin-import eslint-config-prettier prettier husky lint-staged @commitlint/cli @commitlint/config-conventional knip @stryker-mutator/core @stryker-mutator/jest-runner @stryker-mutator/typescript-checker @apidevtools/swagger-parser",
+  "devDependencies": {
+    "// === ESLint + Plugins ===": "",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint-plugin-sonarjs": "^0.25.0",
+    "eslint-plugin-security": "^2.1.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-config-prettier": "^9.1.0",
+
+    "// === Formatação ===": "",
+    "prettier": "^3.2.0",
+
+    "// === Git Hooks ===": "",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+
+    "// === Commit Linting ===": "",
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+
+    "// === Código Morto ===": "",
+    "knip": "^5.0.0",
+
+    "// === Mutation Testing ===": "",
+    "@stryker-mutator/core": "^8.0.0",
+    "@stryker-mutator/jest-runner": "^8.0.0",
+    "@stryker-mutator/typescript-checker": "^8.0.0",
+
+    "// === API Validation ===": "",
+    "@apidevtools/swagger-parser": "^10.1.0"
+  }
+}

@@ -1,0 +1,72 @@
+version: "3.8"
+
+services:
+  sonarqube:
+    image: ${SONAR_IMAGE:-sonarqube:lts-community}
+    container_name: sonarqube
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://db:5432/${SONAR_DB_NAME:-sonarqube}
+      SONAR_JDBC_USERNAME: ${SONAR_DB_USER:-sonar}
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:-sonar}
+    ports:
+      - "${SONAR_PORT:-9000}:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    networks:
+      - sonar-network
+    restart: unless-stopped
+
+  db:
+    image: ${SONAR_DB_IMAGE:-postgres:15-alpine}
+    container_name: sonarqube-db
+    environment:
+      POSTGRES_USER: ${SONAR_DB_USER:-sonar}
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:-sonar}
+      POSTGRES_DB: ${SONAR_DB_NAME:-sonarqube}
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    networks:
+      - sonar-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SONAR_DB_USER:-sonar} -d ${SONAR_DB_NAME:-sonarqube}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  scanner:
+    build: ./scanner
+    image: ${SCANNER_IMAGE:-quality-scanner:latest}
+    container_name: quality-scanner
+    depends_on:
+      sonarqube:
+        condition: service_started
+    environment:
+      SONAR_HOST_URL: ${SONAR_INTERNAL_URL:-http://sonarqube:9000}
+      SONAR_ADMIN_USER: ${SONAR_ADMIN_USER:-admin}
+      SONAR_ADMIN_PASSWORD: ${SONAR_ADMIN_PASSWORD:-admin}
+      SONAR_PUBLIC_URL: ${SONAR_PUBLIC_URL:-http://localhost:9000}
+      SONAR_PROJECT_KEY: ${SONAR_PROJECT_KEY:-my-project}
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+    volumes:
+      - ${PROJECT_PATH:-.}/:/project
+      - ${REPORTS_DIR:-./reports}:/reports
+    networks:
+      - sonar-network
+    profiles:
+      - scan
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+  postgresql_data:
+
+networks:
+  sonar-network:
+    driver: bridge

@@ -35,7 +35,7 @@ coverage/
 .nyc_output/
 *.lcov
 .stryker-tmp/
-reports/
+/reports/
 
 # ============================================================
 # SonarQube Scanner

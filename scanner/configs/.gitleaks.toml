@@ -1,0 +1,40 @@
+title = "Gitleaks Config"
+
+[allowlist]
+  paths = [
+    '''node_modules''',
+    '''dist''',
+    '''coverage''',
+    '''.scannerwork''',
+    '''package-lock.json''',
+  ]
+
+[[rules]]
+  id = "hardcoded-password"
+  description = "Hardcoded password"
+  regex = '''(?i)(password|passwd|pwd|secret)\s*[:=]\s*['"][^\s'"]{8,}['"]'''
+
+[[rules]]
+  id = "jwt-token"
+  description = "JWT Token"
+  regex = '''eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+'''
+
+[[rules]]
+  id = "aws-access-key"
+  description = "AWS Access Key ID"
+  regex = '''AKIA[0-9A-Z]{16}'''
+
+[[rules]]
+  id = "generic-api-key"
+  description = "Generic API Key"
+  regex = '''(?i)(api[_-]?key|apikey)\s*[:=]\s*['"][A-Za-z0-9_\-]{20,}['"]'''
+
+[[rules]]
+  id = "connection-string"
+  description = "Database Connection String"
+  regex = '''(?i)(mongodb|postgres|mysql|redis):\/\/[^\s'"]+:[^\s'"]+@[^\s'"]+'''
+
+[[rules]]
+  id = "private-key"
+  description = "Private Key"
+  regex = '''-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----'''

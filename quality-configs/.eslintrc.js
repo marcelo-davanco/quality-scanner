@@ -1,0 +1,149 @@
+// ESLint config alinhada com SonarQube + boas práticas NestJS/TypeScript
+// O plugin eslint-plugin-sonarjs replica as mesmas regras do SonarQube localmente
+module.exports = {
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    project: 'tsconfig.json',
+    tsconfigRootDir: __dirname,
+    sourceType: 'module',
+  },
+  plugins: [
+    '@typescript-eslint',
+    'sonarjs',
+    'security',
+    'import',
+  ],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'plugin:sonarjs/recommended',
+    'plugin:security/recommended-legacy',
+    'plugin:import/typescript',
+    'prettier', // deve ser o último — desliga regras que conflitam com Prettier
+  ],
+  root: true,
+  env: {
+    node: true,
+    jest: true,
+  },
+  ignorePatterns: ['dist/', 'node_modules/', 'coverage/', '*.js', '!.eslintrc.js'],
+  rules: {
+    // ============================================================
+    // TypeScript — mesmas regras que Copilot/Cursor bot apontam
+    // ============================================================
+    '@typescript-eslint/no-explicit-any': 'error',
+    '@typescript-eslint/no-unsafe-argument': 'error',
+    '@typescript-eslint/no-unsafe-assignment': 'warn',
+    '@typescript-eslint/no-unsafe-call': 'warn',
+    '@typescript-eslint/no-unsafe-member-access': 'warn',
+    '@typescript-eslint/no-unsafe-return': 'warn',
+    '@typescript-eslint/no-unused-vars': ['error', {
+      argsIgnorePattern: '^_',
+      varsIgnorePattern: '^_',
+    }],
+    '@typescript-eslint/explicit-function-return-type': ['warn', {
+      allowExpressions: true,
+      allowTypedFunctionExpressions: true,
+    }],
+    '@typescript-eslint/explicit-module-boundary-types': 'warn',
+    '@typescript-eslint/no-floating-promises': 'error',
+    '@typescript-eslint/no-misused-promises': 'error',
+    '@typescript-eslint/await-thenable': 'error',
+    '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+    '@typescript-eslint/consistent-type-assertions': ['warn', {
+      assertionStyle: 'as',
+      objectLiteralTypeAssertions: 'never',
+    }],
+    '@typescript-eslint/no-unsafe-type-assertion': 'warn',
+    '@typescript-eslint/prefer-nullish-coalescing': 'warn',
+    '@typescript-eslint/prefer-optional-chain': 'warn',
+    '@typescript-eslint/strict-boolean-expressions': 'off',
+    '@typescript-eslint/naming-convention': [
+      'warn',
+      { selector: 'interface', format: ['PascalCase'] },
+      { selector: 'class', format: ['PascalCase'] },
+      { selector: 'enum', format: ['PascalCase'] },
+      { selector: 'enumMember', format: ['UPPER_CASE', 'PascalCase'] },
+    ],
+
+    // ============================================================
+    // SonarJS — replica regras do SonarQube localmente
+    // ============================================================
+    'sonarjs/cognitive-complexity': ['warn', 15],
+    'sonarjs/no-duplicate-string': ['warn', { threshold: 3 }],
+    'sonarjs/no-identical-functions': 'warn',
+    'sonarjs/no-collapsible-if': 'warn',
+    'sonarjs/prefer-immediate-return': 'warn',
+    'sonarjs/no-redundant-jump': 'warn',
+    'sonarjs/no-small-switch': 'warn',
+    'sonarjs/no-nested-template-literals': 'warn',
+
+    // ============================================================
+    // Security — vulnerabilidades comuns
+    // ============================================================
+    'security/detect-object-injection': 'off', // muitos falsos positivos em NestJS
+    'security/detect-non-literal-regexp': 'warn',
+    'security/detect-unsafe-regex': 'error',
+    'security/detect-buffer-noassert': 'error',
+    'security/detect-eval-with-expression': 'error',
+    'security/detect-no-csrf-before-method-override': 'error',
+    'security/detect-possible-timing-attacks': 'warn',
+
+    // ============================================================
+    // Import — organização e validação
+    // ============================================================
+    'import/order': ['warn', {
+      groups: [
+        'builtin',
+        'external',
+        'internal',
+        ['parent', 'sibling'],
+        'index',
+      ],
+      'newlines-between': 'always',
+      alphabetize: { order: 'asc', caseInsensitive: true },
+    }],
+    'import/no-duplicates': 'error',
+    'import/no-cycle': ['warn', { maxDepth: 3 }],
+
+    // ============================================================
+    // Gerais — boas práticas
+    // ============================================================
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'no-debugger': 'error',
+    'no-return-await': 'off', // usa a versão do @typescript-eslint
+    '@typescript-eslint/return-await': ['error', 'in-try-catch'],
+    'prefer-const': 'error',
+    'no-var': 'error',
+    'eqeqeq': ['error', 'always'],
+    'curly': ['error', 'all'],
+    'no-throw-literal': 'error',
+    'max-lines-per-function': ['warn', { max: 80, skipBlankLines: true, skipComments: true }],
+    'max-depth': ['warn', 4],
+    'complexity': ['warn', 15],
+  },
+  overrides: [
+    {
+      // Regras mais relaxadas para arquivos de teste
+      files: ['**/*.spec.ts', '**/*.test.ts', '**/*.e2e-spec.ts'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/consistent-type-assertions': 'off',
+        '@typescript-eslint/no-unsafe-type-assertion': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-return': 'off',
+        '@typescript-eslint/no-floating-promises': 'off',
+        '@typescript-eslint/explicit-function-return-type': 'off',
+        '@typescript-eslint/explicit-module-boundary-types': 'off',
+        'sonarjs/no-duplicate-string': 'off',
+        'sonarjs/cognitive-complexity': 'off',
+        'max-lines-per-function': 'off',
+        'security/detect-non-literal-regexp': 'off',
+      },
+    },
+  ],
+};

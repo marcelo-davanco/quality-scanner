@@ -1,0 +1,52 @@
+# Gitleaks — Detecção de secrets no código
+# Instalar: brew install gitleaks (macOS) ou docker run zricethezav/gitleaks
+# Rodar: gitleaks detect --source . --verbose
+
+title = "Gitleaks Config"
+
+[allowlist]
+  description = "Allowlist global"
+  paths = [
+    '''node_modules''',
+    '''dist''',
+    '''coverage''',
+    '''.scannerwork''',
+    '''package-lock.json''',
+  ]
+
+# Regras customizadas para o projeto
+[[rules]]
+  id = "hardcoded-password"
+  description = "Hardcoded password in variable assignment"
+  regex = '''(?i)(password|passwd|pwd|secret)\s*[:=]\s*['"][^\s'"]{8,}['"]'''
+  tags = ["password", "hardcoded"]
+
+[[rules]]
+  id = "jwt-token"
+  description = "JWT Token"
+  regex = '''eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+'''
+  tags = ["jwt", "token"]
+
+[[rules]]
+  id = "aws-access-key"
+  description = "AWS Access Key ID"
+  regex = '''AKIA[0-9A-Z]{16}'''
+  tags = ["aws", "key"]
+
+[[rules]]
+  id = "generic-api-key"
+  description = "Generic API Key"
+  regex = '''(?i)(api[_-]?key|apikey)\s*[:=]\s*['"][A-Za-z0-9_\-]{20,}['"]'''
+  tags = ["api", "key"]
+
+[[rules]]
+  id = "connection-string"
+  description = "Database Connection String"
+  regex = '''(?i)(mongodb|postgres|mysql|redis):\/\/[^\s'"]+:[^\s'"]+@[^\s'"]+'''
+  tags = ["database", "connection"]
+
+[[rules]]
+  id = "private-key"
+  description = "Private Key"
+  regex = '''-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----'''
+  tags = ["key", "private"]

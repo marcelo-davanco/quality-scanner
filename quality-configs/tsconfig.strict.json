@@ -1,0 +1,43 @@
+{
+  "// INSTRUÇÃO": "Merge estas opções no tsconfig.json do projeto real",
+  "compilerOptions": {
+    "strict": true,
+
+    "// Já habilitados pelo strict: true": "",
+    "// strictNullChecks": true,
+    "// strictFunctionTypes": true,
+    "// strictBindCallApply": true,
+    "// strictPropertyInitialization": true,
+    "// noImplicitAny": true,
+    "// noImplicitThis": true,
+    "// alwaysStrict": true,
+
+    "// Extras recomendados — ativar gradualmente": "",
+
+    "noUncheckedIndexedAccess": true,
+    "// Força checagem de undefined ao acessar arrays/objetos por index": "",
+    "// Exemplo: const item = arr[0]; // tipo será T | undefined em vez de T": "",
+
+    "noPropertyAccessFromIndexSignature": true,
+    "// Força usar bracket notation para index signatures": "",
+    "// Exemplo: obj['key'] em vez de obj.key quando tipo é { [key: string]: T }": "",
+
+    "exactOptionalPropertyTypes": true,
+    "// Diferencia entre 'prop?: string' (ausente) e 'prop: string | undefined'": "",
+
+    "noImplicitReturns": true,
+    "// Erro se uma branch de função não retorna valor": "",
+
+    "noFallthroughCasesInSwitch": true,
+    "// Erro se um case do switch não tem break/return": "",
+
+    "noImplicitOverride": true,
+    "// Força usar 'override' keyword ao sobrescrever métodos de classe pai": "",
+
+    "forceConsistentCasingInFileNames": true,
+    "// Previne imports com casing diferente do arquivo real": "",
+
+    "isolatedModules": true,
+    "// Garante compatibilidade com transpiladores (ts-jest, esbuild, swc)": ""
+  }
+}

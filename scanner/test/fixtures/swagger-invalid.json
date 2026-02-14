@@ -1,0 +1,59 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Bad API Example",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/GetAllUsers/": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/users/CreateNew": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "UserName": { "type": "string" },
+                  "user_email": { "type": "string" },
+                  "Phone_Number": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    }
+  }
+}

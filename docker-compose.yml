@@ -53,6 +53,9 @@ services:
       SONAR_PUBLIC_URL: ${SONAR_PUBLIC_URL:-http://localhost:9000}
       SONAR_PROJECT_KEY: ${SONAR_PROJECT_KEY:-my-project}
       SONAR_TOKEN: ${SONAR_TOKEN:-}
+      ENABLE_API_LINT: ${ENABLE_API_LINT:-false}
+      API_LINT_SEVERITY: ${API_LINT_SEVERITY:-warn}
+      OPENAPI_FILE_PATH: ${OPENAPI_FILE_PATH:-}
     volumes:
       - ${PROJECT_PATH:-.}/:/project
       - ${REPORTS_DIR:-./reports}:/reports

@@ -108,15 +108,67 @@ Acesse: **http://localhost:9000/dashboard?id=nestjs-project**
 - **Duplications** — Código duplicado
 - **Security Hotspots** — Pontos que precisam revisão de segurança
 
+## API Lint — Validação de Contratos OpenAPI (Step 9)
+
+O scanner inclui um step opcional para validação de contratos OpenAPI/Swagger usando **Spectral**. Ele garante que a documentação da API segue padrões REST da organização.
+
+### Ativação
+
+```bash
+# Via variável de ambiente no scan
+ENABLE_API_LINT=true ./scan.sh /caminho/do/projeto
+
+# Via docker-compose
+ENABLE_API_LINT=true docker compose --profile scan up scanner
+```
+
+### O que é validado
+
+- Todas as rotas têm response `400` mapeado
+- Paths usam `kebab-case` (ex: `/meu-recurso`)
+- Propriedades de schema usam `camelCase`
+- Toda operação tem `operationId`, `description`, `summary` e `tags`
+- Paths não terminam com `/`
+- Responses 200/201 têm `content` definido
+
+### Configuração
+
+| Variável | Default | Descrição |
+| -------- | ------- | --------- |
+| `ENABLE_API_LINT` | `false` | Ativa/desativa o step |
+| `API_LINT_SEVERITY` | `warn` | `warn` = apenas reporta, `error` = bloqueia pipeline |
+| `OPENAPI_FILE_PATH` | *(auto-detect)* | Caminho manual para o arquivo OpenAPI |
+
+O arquivo OpenAPI é detectado automaticamente (`swagger.json`, `openapi.yaml`, etc.). Para customizar as regras, edite `scanner/configs/.spectral.yml`. Veja o guia completo em [`scanner/configs/README.md`](./scanner/configs/README.md).
+
 ## Estrutura dos Arquivos
 
 ```
 sonar/
-├── docker-compose.yml        # SonarQube + PostgreSQL
-├── sonar-project.properties  # Configuração do scanner
-├── run-sonar.sh              # Script de análise automatizada
-├── .env                      # Variáveis de ambiente (não commitado)
-├── .env.example              # Exemplo de variáveis
+├── docker-compose.yml          # SonarQube + PostgreSQL + Scanner
+├── sonar-project.properties    # Configuração do scanner
+├── quality-gate.sh             # Quality gate local (10 steps)
+├── run-sonar.sh                # Script de análise automatizada
+├── scan.sh                     # Wrapper para o scanner Docker
+├── .env                        # Variáveis de ambiente (não commitado)
+├── .env.example                # Exemplo de variáveis
+├── scanner/
+│   ├── Dockerfile              # Imagem do scanner
+│   ├── entrypoint.sh           # Pipeline de 9 steps (container)
+│   ├── configs/
+│   │   ├── .eslintrc.js        # Regras ESLint centralizadas
+│   │   ├── .prettierrc         # Formatação Prettier
+│   │   ├── .gitleaks.toml      # Detecção de secrets
+│   │   ├── .spectral.yml       # Regras OpenAPI/Swagger
+│   │   ├── sonar-project.properties
+│   │   └── README.md           # Guia de configuração
+│   ├── scripts/
+│   │   └── swagger-lint.sh     # Script de lint OpenAPI
+│   └── test/
+│       ├── fixtures/
+│       │   ├── swagger-valid.json
+│       │   └── swagger-invalid.json
+│       └── test-api-lint.sh    # Testes do API Lint
 ├── .gitignore
 └── README.md
 ```

@@ -1,0 +1,285 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Example NestJS API",
+    "description": "API de exemplo para validação de contratos OpenAPI. Segue todos os padrões REST da organização.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Quality Team",
+      "email": "quality@example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Servidor de desenvolvimento"
+    }
+  ],
+  "paths": {
+    "/users": {
+      "get": {
+        "operationId": "listUsers",
+        "summary": "Lista todos os usuários",
+        "description": "Retorna uma lista paginada de todos os usuários cadastrados no sistema.",
+        "tags": ["users"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Número da página",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Itens por página",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de usuários retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/User" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parâmetros de paginação inválidos",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createUser",
+        "summary": "Cria um novo usuário",
+        "description": "Cria um novo usuário no sistema com os dados fornecidos.",
+        "tags": ["users"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateUserDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuário criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados de entrada inválidos",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "409": {
+            "description": "Usuário já existe com este email"
+          }
+        }
+      }
+    },
+    "/users/{userId}": {
+      "get": {
+        "operationId": "getUserById",
+        "summary": "Busca usuário por ID",
+        "description": "Retorna os dados de um usuário específico pelo seu identificador.",
+        "tags": ["users"],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador único do usuário",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dados do usuário",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "400": {
+            "description": "ID inválido",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateUser",
+        "summary": "Atualiza um usuário",
+        "description": "Atualiza os dados de um usuário existente.",
+        "tags": ["users"],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador único do usuário",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateUserDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Usuário atualizado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados de entrada inválidos",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteUser",
+        "summary": "Remove um usuário",
+        "description": "Remove permanentemente um usuário do sistema.",
+        "tags": ["users"],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "Identificador único do usuário",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Usuário removido com sucesso"
+          },
+          "400": {
+            "description": "ID inválido",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuário não encontrado"
+          }
+        }
+      }
+    },
+    "/health-check": {
+      "get": {
+        "operationId": "healthCheck",
+        "summary": "Verifica saúde da API",
+        "description": "Endpoint de health check para monitoramento.",
+        "tags": ["system"],
+        "responses": {
+          "200": {
+            "description": "API está saudável",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "uptime": { "type": "number" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição malformada"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "example": "João Silva" },
+          "email": { "type": "string", "format": "email" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "email"]
+      },
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+          "email": { "type": "string", "format": "email" }
+        },
+        "required": ["name", "email"]
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+          "email": { "type": "string", "format": "email" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": { "type": "integer" },
+          "message": { "type": "string" },
+          "error": { "type": "string" }
+        },
+        "required": ["statusCode", "message"]
+      }
+    }
+  }
+}

@@ -56,7 +56,12 @@ RUN npm install -g \
   ts-jest@29 \
   jest@29 \
   @types/jest@29 \
-  knip@5
+  knip@5 \
+  @stoplight/spectral-cli@6
+
+# Copiar scripts auxiliares
+COPY scripts/ /quality/scripts/
+RUN chmod +x /quality/scripts/*.sh
 
 # Copiar entrypoint
 COPY entrypoint.sh /quality/entrypoint.sh

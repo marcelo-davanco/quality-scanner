@@ -15,7 +15,7 @@ BOLD='\033[1m'
 
 ERRORS=0
 WARNINGS=0
-TOTAL_STEPS=9
+TOTAL_STEPS=10
 START_TIME=$(date +%s)
 
 step_pass() { echo -e "${GREEN}  ✓ $1${NC}"; }
@@ -188,9 +188,54 @@ else
 fi
 
 # ============================================================
-# [9/9] Stryker — Mutation Testing (opcional, pesado)
+# [9/10] API Lint — Validação de Contrato OpenAPI (Spectral)
 # ============================================================
-echo -e "\n${CYAN}[9/${TOTAL_STEPS}] Stryker — Mutation testing...${NC}"
+echo -e "\n${CYAN}[9/${TOTAL_STEPS}] API Lint — Validação de contrato OpenAPI...${NC}"
+if [ "${ENABLE_API_LINT:-false}" = "true" ]; then
+  if command -v spectral &> /dev/null || npx spectral --version &> /dev/null 2>&1; then
+    # Detectar arquivo OpenAPI
+    OPENAPI_FILE="${OPENAPI_FILE_PATH:-}"
+    if [ -z "${OPENAPI_FILE}" ]; then
+      for candidate in swagger.json swagger.yaml swagger.yml openapi.json openapi.yaml openapi.yml docs/swagger.json docs/openapi.json dist/swagger.json; do
+        if [ -f "${candidate}" ]; then
+          OPENAPI_FILE="${candidate}"
+          break
+        fi
+      done
+    fi
+
+    if [ -n "${OPENAPI_FILE}" ] && [ -f "${OPENAPI_FILE}" ]; then
+      SPECTRAL_OUTPUT=$(npx spectral lint "${OPENAPI_FILE}" --format text 2>&1 || true)
+      SPECTRAL_ERRORS=$(echo "${SPECTRAL_OUTPUT}" | grep -c "error" 2>/dev/null || echo "0")
+      SPECTRAL_WARNINGS=$(echo "${SPECTRAL_OUTPUT}" | grep -c "warning" 2>/dev/null || echo "0")
+
+      if [ "${SPECTRAL_ERRORS:-0}" -gt 0 ]; then
+        if [ "${API_LINT_SEVERITY:-warn}" = "error" ]; then
+          step_fail "API Lint: ${SPECTRAL_ERRORS} erro(s), ${SPECTRAL_WARNINGS} warning(s)"
+        else
+          step_warn "API Lint: ${SPECTRAL_ERRORS} erro(s), ${SPECTRAL_WARNINGS} warning(s)"
+        fi
+        echo "${SPECTRAL_OUTPUT}" | head -20
+      elif [ "${SPECTRAL_WARNINGS:-0}" -gt 0 ]; then
+        step_warn "API Lint: ${SPECTRAL_WARNINGS} warning(s)"
+      else
+        step_pass "API Lint: contrato OpenAPI válido"
+      fi
+    else
+      step_warn "API Lint: nenhum arquivo OpenAPI encontrado — pulando"
+    fi
+  else
+    step_warn "Spectral não instalado — pulando"
+    echo -e "${YELLOW}  Instale: npm install -g @stoplight/spectral-cli${NC}"
+  fi
+else
+  step_warn "API Lint desativado (ENABLE_API_LINT=false). Ativar: ENABLE_API_LINT=true ./quality-gate.sh"
+fi
+
+# ============================================================
+# [10/10] Stryker — Mutation Testing (opcional, pesado)
+# ============================================================
+echo -e "\n${CYAN}[10/${TOTAL_STEPS}] Stryker — Mutation testing...${NC}"
 if [ "${RUN_STRYKER:-false}" = "true" ]; then
   if npx stryker --version &> /dev/null 2>&1; then
     STRYKER_OUTPUT=$(npx stryker run 2>&1 || true)

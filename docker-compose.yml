@@ -53,6 +53,14 @@ services:
       SONAR_PUBLIC_URL: ${SONAR_PUBLIC_URL:-http://localhost:9000}
       SONAR_PROJECT_KEY: ${SONAR_PROJECT_KEY:-my-project}
       SONAR_TOKEN: ${SONAR_TOKEN:-}
+      ENABLE_API_LINT: ${ENABLE_API_LINT:-false}
+      API_LINT_SEVERITY: ${API_LINT_SEVERITY:-warn}
+      OPENAPI_FILE_PATH: ${OPENAPI_FILE_PATH:-}
+      ENABLE_INFRA_SCAN: ${ENABLE_INFRA_SCAN:-false}
+      INFRA_SCAN_SEVERITY: ${INFRA_SCAN_SEVERITY:-HIGH}
+      SCAN_DOCKERFILE: ${SCAN_DOCKERFILE:-true}
+      SCAN_K8S: ${SCAN_K8S:-true}
+      SCAN_COMPOSE: ${SCAN_COMPOSE:-true}
     volumes:
       - ${PROJECT_PATH:-.}/:/project
       - ${REPORTS_DIR:-./reports}:/reports

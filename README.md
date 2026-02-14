@@ -108,15 +108,123 @@ Acesse: **http://localhost:9000/dashboard?id=nestjs-project**
 - **Duplications** — Código duplicado
 - **Security Hotspots** — Pontos que precisam revisão de segurança
 
+## API Lint — Validação de Contratos OpenAPI (Step 9)
+
+O scanner inclui um step opcional para validação de contratos OpenAPI/Swagger usando **Spectral**. Ele garante que a documentação da API segue padrões REST da organização.
+
+### Ativação
+
+```bash
+# Via variável de ambiente no scan
+ENABLE_API_LINT=true ./scan.sh /caminho/do/projeto
+
+# Via docker-compose
+ENABLE_API_LINT=true docker compose --profile scan up scanner
+```
+
+### O que é validado
+
+- Todas as rotas têm response `400` mapeado
+- Paths usam `kebab-case` (ex: `/meu-recurso`)
+- Propriedades de schema usam `camelCase`
+- Toda operação tem `operationId`, `description`, `summary` e `tags`
+- Paths não terminam com `/`
+- Responses 200/201 têm `content` definido
+
+### Configuração
+
+| Variável | Default | Descrição |
+| -------- | ------- | --------- |
+| `ENABLE_API_LINT` | `false` | Ativa/desativa o step |
+| `API_LINT_SEVERITY` | `warn` | `warn` = apenas reporta, `error` = bloqueia pipeline |
+| `OPENAPI_FILE_PATH` | *(auto-detect)* | Caminho manual para o arquivo OpenAPI |
+
+O arquivo OpenAPI é detectado automaticamente (`swagger.json`, `openapi.yaml`, etc.). Para customizar as regras, edite `scanner/configs/.spectral.yml`. Veja o guia completo em [`scanner/configs/README.md`](./scanner/configs/README.md).
+
+## Infra Scan — Segurança de Infraestrutura (Step 10)
+
+O scanner inclui um step opcional para análise de segurança de infraestrutura usando **Trivy**. Ele varre `Dockerfile`, `docker-compose.yml` e manifests Kubernetes, bloqueando antes que cheguem ao cluster:
+
+- Imagens base desatualizadas ou usando tag `latest`
+- Containers rodando como `root`
+- Configurações de rede expostas (`hostNetwork`, `hostPID`)
+- Containers privilegiados
+- Falta de limites de recursos (CPU/memory)
+- Falta de `securityContext` e `HEALTHCHECK`
+
+### Ativação
+
+```bash
+# Via variável de ambiente no scan
+ENABLE_INFRA_SCAN=true ./scan.sh /caminho/do/projeto
+
+# Via docker-compose
+ENABLE_INFRA_SCAN=true docker compose --profile scan up scanner
+```
+
+### O que é varrido
+
+| Tipo | Arquivos Detectados | Exemplos de Findings |
+| ---- | ------------------- | -------------------- |
+| **Dockerfile** | `Dockerfile`, `Dockerfile.*` | Imagem `latest`, sem `USER`, sem `HEALTHCHECK`, uso de `ADD` |
+| **docker-compose** | `docker-compose.yml`, `compose.yaml` | `privileged: true`, portas expostas, volumes perigosos |
+| **Kubernetes** | `deployment.yaml`, `service.yaml`, etc. | `hostNetwork`, sem `securityContext`, sem limites de recursos |
+
+### Configuração
+
+| Variável | Default | Descrição |
+| -------- | ------- | --------- |
+| `ENABLE_INFRA_SCAN` | `false` | Ativa/desativa o step |
+| `INFRA_SCAN_SEVERITY` | `HIGH` | Nível mínimo para bloqueio: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` |
+| `SCAN_DOCKERFILE` | `true` | Ativa varredura de Dockerfiles |
+| `SCAN_K8S` | `true` | Ativa varredura de manifests Kubernetes |
+| `SCAN_COMPOSE` | `true` | Ativa varredura de docker-compose |
+
+### Severity Thresholds
+
+- **`CRITICAL`** — bloqueia sempre (ex: container privilegiado em K8s)
+- **`HIGH`** — bloqueia por padrão (ex: rodando como root, hostNetwork)
+- **`MEDIUM`** / **`LOW`** — apenas reporta (ex: falta de seccomp profile)
+
+Para customizar as políticas de segurança, edite `scanner/configs/trivy-policy.yaml`. Veja o guia completo em [`scanner/configs/README.md`](./scanner/configs/README.md).
+
 ## Estrutura dos Arquivos
 
 ```
 sonar/
-├── docker-compose.yml        # SonarQube + PostgreSQL
-├── sonar-project.properties  # Configuração do scanner
-├── run-sonar.sh              # Script de análise automatizada
-├── .env                      # Variáveis de ambiente (não commitado)
-├── .env.example              # Exemplo de variáveis
+├── docker-compose.yml          # SonarQube + PostgreSQL + Scanner
+├── sonar-project.properties    # Configuração do scanner
+├── quality-gate.sh             # Quality gate local (11 steps)
+├── run-sonar.sh                # Script de análise automatizada
+├── scan.sh                     # Wrapper para o scanner Docker
+├── .env                        # Variáveis de ambiente (não commitado)
+├── .env.example                # Exemplo de variáveis
+├── scanner/
+│   ├── Dockerfile              # Imagem do scanner
+│   ├── entrypoint.sh           # Pipeline de 10 steps (container)
+│   ├── configs/
+│   │   ├── .eslintrc.js        # Regras ESLint centralizadas
+│   │   ├── .prettierrc         # Formatação Prettier
+│   │   ├── .gitleaks.toml      # Detecção de secrets
+│   │   ├── .spectral.yml       # Regras OpenAPI/Swagger
+│   │   ├── trivy-policy.yaml   # Políticas de segurança Trivy
+│   │   ├── sonar-project.properties
+│   │   └── README.md           # Guia de configuração
+│   ├── scripts/
+│   │   ├── swagger-lint.sh     # Script de lint OpenAPI
+│   │   └── infra-scan.sh       # Script de segurança de infraestrutura
+│   └── test/
+│       ├── fixtures/
+│       │   ├── swagger-valid.json
+│       │   ├── swagger-invalid.json
+│       │   ├── Dockerfile.safe
+│       │   ├── Dockerfile.unsafe
+│       │   ├── compose-safe.yml
+│       │   ├── compose-unsafe.yml
+│       │   ├── deployment-safe.yaml
+│       │   └── deployment-unsafe.yaml
+│       ├── test-api-lint.sh    # Testes do API Lint
+│       └── test-infra-scan.sh  # Testes do Infra Scan
 ├── .gitignore
 └── README.md
 ```

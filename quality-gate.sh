@@ -15,7 +15,7 @@ BOLD='\033[1m'
 
 ERRORS=0
 WARNINGS=0
-TOTAL_STEPS=9
+TOTAL_STEPS=11
 START_TIME=$(date +%s)
 
 step_pass() { echo -e "${GREEN}  ✓ $1${NC}"; }
@@ -188,9 +188,109 @@ else
 fi
 
 # ============================================================
-# [9/9] Stryker — Mutation Testing (opcional, pesado)
+# [9/10] API Lint — Validação de Contrato OpenAPI (Spectral)
 # ============================================================
-echo -e "\n${CYAN}[9/${TOTAL_STEPS}] Stryker — Mutation testing...${NC}"
+echo -e "\n${CYAN}[9/${TOTAL_STEPS}] API Lint — Validação de contrato OpenAPI...${NC}"
+if [ "${ENABLE_API_LINT:-false}" = "true" ]; then
+  if command -v spectral &> /dev/null || npx spectral --version &> /dev/null 2>&1; then
+    # Detectar arquivo OpenAPI
+    OPENAPI_FILE="${OPENAPI_FILE_PATH:-}"
+    if [ -z "${OPENAPI_FILE}" ]; then
+      for candidate in swagger.json swagger.yaml swagger.yml openapi.json openapi.yaml openapi.yml docs/swagger.json docs/openapi.json dist/swagger.json; do
+        if [ -f "${candidate}" ]; then
+          OPENAPI_FILE="${candidate}"
+          break
+        fi
+      done
+    fi
+
+    if [ -n "${OPENAPI_FILE}" ] && [ -f "${OPENAPI_FILE}" ]; then
+      SPECTRAL_OUTPUT=$(npx spectral lint "${OPENAPI_FILE}" --format text 2>&1 || true)
+      SPECTRAL_ERRORS=$(echo "${SPECTRAL_OUTPUT}" | grep -c "error" 2>/dev/null || echo "0")
+      SPECTRAL_WARNINGS=$(echo "${SPECTRAL_OUTPUT}" | grep -c "warning" 2>/dev/null || echo "0")
+
+      if [ "${SPECTRAL_ERRORS:-0}" -gt 0 ]; then
+        if [ "${API_LINT_SEVERITY:-warn}" = "error" ]; then
+          step_fail "API Lint: ${SPECTRAL_ERRORS} erro(s), ${SPECTRAL_WARNINGS} warning(s)"
+        else
+          step_warn "API Lint: ${SPECTRAL_ERRORS} erro(s), ${SPECTRAL_WARNINGS} warning(s)"
+        fi
+        echo "${SPECTRAL_OUTPUT}" | head -20
+      elif [ "${SPECTRAL_WARNINGS:-0}" -gt 0 ]; then
+        step_warn "API Lint: ${SPECTRAL_WARNINGS} warning(s)"
+      else
+        step_pass "API Lint: contrato OpenAPI válido"
+      fi
+    else
+      step_warn "API Lint: nenhum arquivo OpenAPI encontrado — pulando"
+    fi
+  else
+    step_warn "Spectral não instalado — pulando"
+    echo -e "${YELLOW}  Instale: npm install -g @stoplight/spectral-cli${NC}"
+  fi
+else
+  step_warn "API Lint desativado (ENABLE_API_LINT=false). Ativar: ENABLE_API_LINT=true ./quality-gate.sh"
+fi
+
+# ============================================================
+# [10/11] Infra Scan — Segurança de Infraestrutura (Trivy)
+# ============================================================
+echo -e "\n${CYAN}[10/${TOTAL_STEPS}] Infra Scan — Segurança de infraestrutura (Trivy)...${NC}"
+if [ "${ENABLE_INFRA_SCAN:-false}" = "true" ]; then
+  if command -v trivy &> /dev/null; then
+    INFRA_FINDINGS=0
+    INFRA_SCAN_SEVERITY="${INFRA_SCAN_SEVERITY:-HIGH}"
+
+    # Scan Dockerfiles
+    if [ "${SCAN_DOCKERFILE:-true}" = "true" ]; then
+      DOCKERFILES=$(find . -maxdepth 4 -type f \( -name "Dockerfile" -o -name "Dockerfile.*" \) ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/scanner/test/fixtures/*" 2>/dev/null || true)
+      if [ -n "${DOCKERFILES}" ]; then
+        DF_FINDINGS=$(trivy config . --severity "${INFRA_SCAN_SEVERITY},CRITICAL" --format json --quiet 2>/dev/null | python3 -c "
+import json, sys
+try:
+  data = json.load(sys.stdin)
+  count = sum(len(r.get('Misconfigurations', []) or []) for r in (data.get('Results', []) or []))
+  print(count)
+except: print(0)
+" 2>/dev/null || echo "0")
+        INFRA_FINDINGS=$((INFRA_FINDINGS + DF_FINDINGS))
+      fi
+    fi
+
+    # Scan K8s manifests
+    if [ "${SCAN_K8S:-true}" = "true" ]; then
+      for k8s_dir in k8s kubernetes manifests deploy deployments; do
+        if [ -d "${k8s_dir}" ]; then
+          K8S_FINDINGS=$(trivy config "${k8s_dir}" --severity "${INFRA_SCAN_SEVERITY},CRITICAL" --format json --quiet 2>/dev/null | python3 -c "
+import json, sys
+try:
+  data = json.load(sys.stdin)
+  count = sum(len(r.get('Misconfigurations', []) or []) for r in (data.get('Results', []) or []))
+  print(count)
+except: print(0)
+" 2>/dev/null || echo "0")
+          INFRA_FINDINGS=$((INFRA_FINDINGS + K8S_FINDINGS))
+        fi
+      done
+    fi
+
+    if [ "${INFRA_FINDINGS}" -gt 0 ]; then
+      step_warn "Infra Scan: ${INFRA_FINDINGS} finding(s) de segurança"
+    else
+      step_pass "Infra Scan: infraestrutura segura"
+    fi
+  else
+    step_warn "Trivy não instalado — pulando"
+    echo -e "${YELLOW}  Instale: https://aquasecurity.github.io/trivy/latest/getting-started/installation/${NC}"
+  fi
+else
+  step_warn "Infra Scan desativado (ENABLE_INFRA_SCAN=false). Ativar: ENABLE_INFRA_SCAN=true ./quality-gate.sh"
+fi
+
+# ============================================================
+# [11/11] Stryker — Mutation Testing (opcional, pesado)
+# ============================================================
+echo -e "\n${CYAN}[11/${TOTAL_STEPS}] Stryker — Mutation testing...${NC}"
 if [ "${RUN_STRYKER:-false}" = "true" ]; then
   if npx stryker --version &> /dev/null 2>&1; then
     STRYKER_OUTPUT=$(npx stryker run 2>&1 || true)

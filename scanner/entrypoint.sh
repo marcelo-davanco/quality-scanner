@@ -15,7 +15,7 @@ BOLD='\033[1m'
 
 ERRORS=0
 WARNINGS=0
-TOTAL_STEPS=8
+TOTAL_STEPS=10
 START_TIME=$(date +%s)
 SCAN_ID=$(date +%Y%m%d_%H%M%S)
 SCAN_DATE=$(date +%Y-%m-%d)
@@ -461,6 +461,68 @@ else
 fi
 
 # ============================================================
+# [9/9] API Lint — Validação de Contrato OpenAPI (Spectral)
+# ============================================================
+echo -e "\n${CYAN}[9/${TOTAL_STEPS}] API Lint — Validação de contrato OpenAPI...${NC}"
+if [ "${ENABLE_API_LINT:-false}" = "true" ]; then
+  LINT_RESULT=$(/quality/scripts/swagger-lint.sh /project "${REPORTS_DIR}" "${CONFIGS_DIR}" 2>/dev/null || echo "NO_FILE")
+
+  if [ "${LINT_RESULT}" = "NO_FILE" ]; then
+    step_warn "API Lint: nenhum arquivo OpenAPI encontrado — pulando"
+    write_report "api-lint" "skip" "Nenhum arquivo OpenAPI encontrado" "[]"
+  else
+    LINT_STATUS=$(echo "${LINT_RESULT}" | cut -d'|' -f1)
+    LINT_SUMMARY=$(echo "${LINT_RESULT}" | cut -d'|' -f2)
+    LINT_DETAILS=$(echo "${LINT_RESULT}" | cut -d'|' -f3-)
+
+    if [ "${LINT_STATUS}" = "fail" ]; then
+      step_fail "API Lint: ${LINT_SUMMARY}"
+      write_report "api-lint" "fail" "${LINT_SUMMARY}" "${LINT_DETAILS}"
+    elif [ "${LINT_STATUS}" = "warn" ]; then
+      step_warn "API Lint: ${LINT_SUMMARY}"
+      write_report "api-lint" "warn" "${LINT_SUMMARY}" "${LINT_DETAILS}"
+    else
+      step_pass "API Lint: ${LINT_SUMMARY}"
+      write_report "api-lint" "pass" "${LINT_SUMMARY}" "${LINT_DETAILS}"
+    fi
+  fi
+else
+  step_warn "API Lint desativado (ENABLE_API_LINT=false)"
+  write_report "api-lint" "skip" "Step desativado via ENABLE_API_LINT" "[]"
+fi
+
+# ============================================================
+# [10/10] Infra Scan — Segurança de Infraestrutura (Trivy)
+# ============================================================
+echo -e "\n${CYAN}[10/${TOTAL_STEPS}] Infra Scan — Segurança de infraestrutura (Trivy)...${NC}"
+if [ "${ENABLE_INFRA_SCAN:-false}" = "true" ]; then
+  INFRA_RESULT=$(/quality/scripts/infra-scan.sh /project "${REPORTS_DIR}" "${CONFIGS_DIR}" 2>/dev/null || echo "NO_IAC_FILES")
+
+  if [ "${INFRA_RESULT}" = "NO_IAC_FILES" ]; then
+    step_warn "Infra Scan: nenhum arquivo IaC encontrado — pulando"
+    write_report "infra-scan" "skip" "Nenhum arquivo IaC encontrado" "[]"
+  else
+    INFRA_STATUS=$(echo "${INFRA_RESULT}" | cut -d'|' -f1)
+    INFRA_SUMMARY=$(echo "${INFRA_RESULT}" | cut -d'|' -f2)
+    INFRA_DETAILS=$(echo "${INFRA_RESULT}" | cut -d'|' -f3-)
+
+    if [ "${INFRA_STATUS}" = "fail" ]; then
+      step_fail "Infra Scan: ${INFRA_SUMMARY}"
+      write_report "infra-scan" "fail" "${INFRA_SUMMARY}" "${INFRA_DETAILS}"
+    elif [ "${INFRA_STATUS}" = "warn" ]; then
+      step_warn "Infra Scan: ${INFRA_SUMMARY}"
+      write_report "infra-scan" "warn" "${INFRA_SUMMARY}" "${INFRA_DETAILS}"
+    else
+      step_pass "Infra Scan: ${INFRA_SUMMARY}"
+      write_report "infra-scan" "pass" "${INFRA_SUMMARY}" "${INFRA_DETAILS}"
+    fi
+  fi
+else
+  step_warn "Infra Scan desativado (ENABLE_INFRA_SCAN=false)"
+  write_report "infra-scan" "skip" "Step desativado via ENABLE_INFRA_SCAN" "[]"
+fi
+
+# ============================================================
 # RESULTADO FINAL — Gerar summary.json
 # ============================================================
 END_TIME=$(date +%s)
@@ -484,7 +546,7 @@ cat > "${REPORTS_DIR}/summary.json" <<EOJSON
   "gateStatus": "${GATE_STATUS}",
   "errors": ${ERRORS},
   "warnings": ${WARNINGS},
-  "tools": ["gitleaks","typescript","eslint","prettier","audit","knip","jest","sonarqube"]
+  "tools": ["gitleaks","typescript","eslint","prettier","audit","knip","jest","sonarqube","api-lint","infra-scan"]
 }
 EOJSON
 

@@ -1,0 +1,26 @@
+# Dockerfile inseguro — deve gerar múltiplas findings no Trivy
+# Usado como fixture de teste para o Infra Scan
+
+# PROBLEMA: Usa tag 'latest' (DS001)
+FROM node:latest
+
+# PROBLEMA: Usa ADD ao invés de COPY (DS005)
+ADD . /app
+
+WORKDIR /app
+
+# PROBLEMA: Usa apt-get sem --no-install-recommends e sem clean (DS012, DS015)
+RUN apt-get update && apt-get install -y curl wget git
+
+# PROBLEMA: Usa sudo (DS014)
+RUN sudo npm install -g pm2
+
+RUN npm install
+
+# PROBLEMA: Expõe porta privilegiada (DS026)
+EXPOSE 80
+
+# PROBLEMA: Sem USER instruction — roda como root (DS002, DS013)
+# PROBLEMA: Sem HEALTHCHECK (DS006)
+
+CMD ["node", "index.js"]

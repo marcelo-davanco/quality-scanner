@@ -1,0 +1,70 @@
+# ============================================================
+# Trivy — Políticas de Segurança de Infraestrutura
+# Usado pelo step de Infra Scan do Quality Scanner
+# ============================================================
+#
+# Referência: https://aquasecurity.github.io/trivy/latest/docs/configuration/
+#
+# Severidades disponíveis: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN
+# Scanners disponíveis: misconfig, vuln, secret
+# ============================================================
+
+# Severidades que serão reportadas (filtro mínimo)
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+
+# Scanners ativos para IaC
+scanners:
+  - misconfig
+
+# Formato de saída
+format: json
+
+# Não falhar automaticamente — o controle de bloqueio é feito pelo infra-scan.sh
+exit-code: 0
+
+# Configurações de misconfiguration
+misconfig:
+  # Checkers Rego/built-in do Trivy para IaC
+  # Cobre: Dockerfile, Kubernetes, docker-compose, Terraform, CloudFormation
+  include:
+    - docker
+    - kubernetes
+
+# ============================================================
+# Regras de Segurança Cobertas (built-in do Trivy)
+# ============================================================
+#
+# DOCKERFILE:
+#   - DS001: Imagem base usando tag 'latest' (HIGH)
+#   - DS002: Container rodando como root (HIGH)
+#   - DS005: Uso de ADD ao invés de COPY (LOW)
+#   - DS006: Falta de HEALTHCHECK (LOW)
+#   - DS012: Uso de apt-get sem --no-install-recommends (LOW)
+#   - DS013: Falta de USER instruction (HIGH)
+#   - DS014: Uso de sudo (MEDIUM)
+#   - DS015: Falta de apt-get clean (LOW)
+#   - DS026: Exposição de porta privilegiada (LOW)
+#
+# KUBERNETES:
+#   - KSV001: Containers rodando como root (HIGH)
+#   - KSV003: Capabilities não dropadas (MEDIUM)
+#   - KSV006: hostNetwork habilitado (HIGH)
+#   - KSV009: hostPID habilitado (HIGH)
+#   - KSV010: hostIPC habilitado (HIGH)
+#   - KSV011: Limites de CPU não definidos (MEDIUM)
+#   - KSV012: Falta de readOnlyRootFilesystem (LOW)
+#   - KSV013: Falta de limites de memória (MEDIUM)
+#   - KSV014: Container privilegiado (CRITICAL)
+#   - KSV020: Falta de runAsNonRoot (HIGH)
+#   - KSV021: Falta de securityContext (HIGH)
+#   - KSV030: Falta de seccomp profile (MEDIUM)
+#
+# DOCKER-COMPOSE:
+#   - Portas expostas desnecessariamente
+#   - Volumes com permissões excessivas
+#   - privileged: true
+#   - Falta de read_only
+# ============================================================

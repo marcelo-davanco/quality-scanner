@@ -11,22 +11,11 @@ rules:
   # ──────────────────────────────────────────────────────────
   # Regras padrão OAS (severity override)
   # ──────────────────────────────────────────────────────────
-  operation-operationId:
-    severity: error
-    message: "Toda operação deve ter um operationId definido."
-
-  operation-description:
-    severity: error
-    message: "Toda operação deve ter uma description."
-
-  info-description:
-    severity: error
-
-  info-contact:
-    severity: warn
-
-  oas3-api-servers:
-    severity: warn
+  operation-operationId: error
+  operation-description: error
+  info-description: error
+  info-contact: warn
+  oas3-api-servers: warn
 
   # ──────────────────────────────────────────────────────────
   # Regras customizadas — Padrões REST da organização

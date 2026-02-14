@@ -15,6 +15,10 @@
       "description": "Servidor de desenvolvimento"
     }
   ],
+  "tags": [
+    { "name": "users", "description": "Operações de usuários" },
+    { "name": "system", "description": "Operações do sistema" }
+  ],
   "paths": {
     "/users": {
       "get": {
@@ -102,7 +106,7 @@
         }
       }
     },
-    "/users/{userId}": {
+    "/users/{id}": {
       "get": {
         "operationId": "getUserById",
         "summary": "Busca usuário por ID",
@@ -110,7 +114,7 @@
         "tags": ["users"],
         "parameters": [
           {
-            "name": "userId",
+            "name": "id",
             "in": "path",
             "required": true,
             "description": "Identificador único do usuário",
@@ -146,7 +150,7 @@
         "tags": ["users"],
         "parameters": [
           {
-            "name": "userId",
+            "name": "id",
             "in": "path",
             "required": true,
             "description": "Identificador único do usuário",
@@ -190,7 +194,7 @@
         "tags": ["users"],
         "parameters": [
           {
-            "name": "userId",
+            "name": "id",
             "in": "path",
             "required": true,
             "description": "Identificador único do usuário",

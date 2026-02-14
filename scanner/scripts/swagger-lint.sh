@@ -40,7 +40,8 @@ detect_openapi_file() {
       echo "${OPENAPI_FILE_PATH}"
       return 0
     fi
-    echo "" && return 1
+    echo ""
+    return 0
   fi
 
   # Nomes de arquivo comuns para OpenAPI/Swagger
@@ -89,7 +90,7 @@ detect_openapi_file() {
   fi
 
   echo ""
-  return 1
+  return 0
 }
 
 # ──────────────────────────────────────────────────────────

@@ -1,0 +1,102 @@
+# ============================================================
+# Spectral Ruleset — Validação de Contratos OpenAPI/Swagger
+# Extensão do ruleset padrão OAS com regras customizadas
+# para garantir padrões REST da organização
+# ============================================================
+
+extends:
+  - "spectral:oas"
+
+rules:
+  # ──────────────────────────────────────────────────────────
+  # Regras padrão OAS (severity override)
+  # ──────────────────────────────────────────────────────────
+  operation-operationId:
+    severity: error
+    message: "Toda operação deve ter um operationId definido."
+
+  operation-description:
+    severity: error
+    message: "Toda operação deve ter uma description."
+
+  info-description:
+    severity: error
+
+  info-contact:
+    severity: warn
+
+  oas3-api-servers:
+    severity: warn
+
+  # ──────────────────────────────────────────────────────────
+  # Regras customizadas — Padrões REST da organização
+  # ──────────────────────────────────────────────────────────
+
+  # Todas as rotas devem ter response 400 mapeado
+  operation-must-have-400-response:
+    description: "Toda operação deve mapear uma resposta 400 (Bad Request)."
+    severity: warn
+    given: "$.paths[*][get,post,put,patch,delete]"
+    then:
+      field: "responses.400"
+      function: truthy
+
+  # Nomenclatura kebab-case para paths
+  paths-must-be-kebab-case:
+    description: "Paths devem usar kebab-case (ex: /meu-recurso, não /meuRecurso)."
+    severity: warn
+    given: "$.paths"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^(/[a-z0-9\\-{}]+)+$"
+      field: "@key"
+
+  # Nomenclatura camelCase para propriedades de schema
+  properties-must-be-camel-case:
+    description: "Propriedades de schema devem usar camelCase."
+    severity: warn
+    given: "$..[?(@.type=='object')].properties"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-z][a-zA-Z0-9]*$"
+      field: "@key"
+
+  # Exigir tags em operações para organização
+  operation-must-have-tags:
+    description: "Toda operação deve ter pelo menos uma tag."
+    severity: warn
+    given: "$.paths[*][get,post,put,patch,delete]"
+    then:
+      field: "tags"
+      function: truthy
+
+  # Exigir summary em operações
+  operation-must-have-summary:
+    description: "Toda operação deve ter um summary."
+    severity: warn
+    given: "$.paths[*][get,post,put,patch,delete]"
+    then:
+      field: "summary"
+      function: truthy
+
+  # Proibir paths com trailing slash
+  no-trailing-slash:
+    description: "Paths não devem terminar com /."
+    severity: error
+    given: "$.paths"
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "\\/$"
+      field: "@key"
+
+  # Exigir content-type em responses com body
+  response-must-have-content:
+    description: "Responses 200/201 devem ter content definido."
+    severity: warn
+    given: "$.paths[*][*].responses[?(@property == '200' || @property == '201')]"
+    then:
+      field: "content"
+      function: truthy

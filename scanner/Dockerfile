@@ -23,6 +23,20 @@ RUN ARCH=$(uname -m) && \
   rm /tmp/gitleaks.tar.gz && \
   chmod +x /usr/local/bin/gitleaks
 
+# Instalar Trivy (scanner de segurança de infraestrutura)
+# Suporta: Dockerfile, docker-compose, K8s manifests, Terraform, vulnerabilidades de imagem
+ENV TRIVY_VERSION=0.58.2
+RUN ARCH=$(uname -m) && \
+  if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
+  TRIVY_ARCH="ARM64"; \
+  else \
+  TRIVY_ARCH="64bit"; \
+  fi && \
+  wget -q "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz" -O /tmp/trivy.tar.gz && \
+  tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy && \
+  rm /tmp/trivy.tar.gz && \
+  chmod +x /usr/local/bin/trivy
+
 # Diretório das configs de qualidade (embutidas no container)
 WORKDIR /quality
 COPY configs/ /quality/configs/

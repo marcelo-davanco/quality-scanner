@@ -1,5 +1,5 @@
-# docker-compose inseguro — deve gerar múltiplas findings no Trivy
-# Usado como fixture de teste para o Infra Scan
+# Unsafe docker-compose — should generate multiple findings in Trivy
+# Used as a test fixture for the Infra Scan step
 
 version: "3.8"
 
@@ -7,33 +7,33 @@ services:
   app:
     image: node:latest
     container_name: app-unsafe
-    # PROBLEMA: Container privilegiado
+    # ISSUE: Privileged container
     privileged: true
-    # PROBLEMA: Sem read_only
-    # PROBLEMA: Sem user (roda como root)
-    # PROBLEMA: Sem cap_drop
-    # PROBLEMA: Portas expostas em todas as interfaces
+    # ISSUE: No read_only
+    # ISSUE: No user (runs as root)
+    # ISSUE: No cap_drop
+    # ISSUE: Ports exposed on all interfaces
     ports:
       - "3000:3000"
       - "9229:9229"
-    # PROBLEMA: Volume com acesso total ao host
+    # ISSUE: Volume with full host access
     volumes:
       - /:/host-root
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       NODE_ENV: development
-      # PROBLEMA: Credenciais hardcoded
+      # ISSUE: Hardcoded credentials
       DB_PASSWORD: super_secret_123
-    # PROBLEMA: Sem healthcheck
-    # PROBLEMA: Sem limites de recursos
-    # PROBLEMA: Rede host
+    # ISSUE: No healthcheck
+    # ISSUE: No resource limits
+    # ISSUE: Host network mode
     network_mode: host
     restart: always
 
   db:
     image: postgres:latest
-    # PROBLEMA: Sem read_only
-    # PROBLEMA: Sem user
+    # ISSUE: No read_only
+    # ISSUE: No user
     environment:
       POSTGRES_PASSWORD: admin123
     ports:

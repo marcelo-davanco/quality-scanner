@@ -1,14 +1,14 @@
 #!/bin/bash
 # ============================================================
-# Infra Scan — Segurança de Infraestrutura (IaC e Containers)
-# Step 10 do Quality Scanner
-# Usa Trivy para varrer Dockerfiles, docker-compose e K8s manifests
+# Infra Scan — Infrastructure Security (IaC and Containers)
+# Quality Scanner Step 10
+# Uses Trivy to scan Dockerfiles, docker-compose, and K8s manifests
 # ============================================================
 
 set -euo pipefail
 
 # ──────────────────────────────────────────────────────────
-# Cores (herdadas do entrypoint, mas definidas como fallback)
+# Colors (inherited from entrypoint, defined here as fallback)
 # ──────────────────────────────────────────────────────────
 RED="${RED:-\033[0;31m}"
 GREEN="${GREEN:-\033[0;32m}"
@@ -17,7 +17,7 @@ CYAN="${CYAN:-\033[0;36m}"
 NC="${NC:-\033[0m}"
 
 # ──────────────────────────────────────────────────────────
-# Parâmetros
+# Parameters
 # ──────────────────────────────────────────────────────────
 PROJECT_DIR="${1:-/project}"
 REPORTS_DIR="${2:-/reports}"
@@ -29,8 +29,8 @@ SCAN_K8S="${SCAN_K8S:-true}"
 SCAN_COMPOSE="${SCAN_COMPOSE:-true}"
 
 # ──────────────────────────────────────────────────────────
-# Detecção de arquivos IaC no projeto
-# Retorna lista de arquivos encontrados por tipo
+# IaC file detection in the project
+# Returns a list of found files by type
 # ──────────────────────────────────────────────────────────
 detect_dockerfiles() {
   local project_dir="$1"
@@ -63,7 +63,7 @@ detect_compose_files() {
 detect_k8s_manifests() {
   local project_dir="$1"
 
-  # Diretórios comuns de K8s
+  # Common K8s directories
   local k8s_dirs=("k8s" "kubernetes" "manifests" "deploy" "deployments" "helm" "charts" ".k8s")
   local found_files=""
 
@@ -82,7 +82,7 @@ detect_k8s_manifests() {
     fi
   done
 
-  # Buscar arquivos com nomes típicos de K8s na raiz
+  # Search for files with typical K8s names at the root
   local root_k8s
   root_k8s=$(find "${project_dir}" \
     -maxdepth 2 \
@@ -106,14 +106,14 @@ detect_k8s_manifests() {
     found_files="${found_files}${root_k8s}"$'\n'
   fi
 
-  # Deduplica e remove linhas vazias
+  # Deduplicate and remove empty lines
   echo "${found_files}" | sort -u | grep -v '^$' || true
 }
 
 # ──────────────────────────────────────────────────────────
-# Execução do Trivy para um tipo de scan
+# Trivy execution for a scan type
 # Args: <scan_type> <file_or_dir> <output_file>
-# scan_type: config (para misconfig scanning)
+# scan_type: config (for misconfig scanning)
 # ──────────────────────────────────────────────────────────
 run_trivy_scan() {
   local target="$1"
@@ -127,15 +127,15 @@ run_trivy_scan() {
     --quiet \
     2>/dev/null || true
 
-  # Se não gerou arquivo, criar vazio
+  # If no output file was generated, create an empty one
   if [ ! -f "${output_file}" ]; then
     echo '{"Results":null}' > "${output_file}"
   fi
 }
 
 # ──────────────────────────────────────────────────────────
-# Processamento dos resultados Trivy
-# Gera JSON padronizado para o dashboard
+# Trivy result processing
+# Generates standardized JSON for the dashboard
 # ──────────────────────────────────────────────────────────
 process_trivy_results() {
   local raw_files="$1"
@@ -169,7 +169,7 @@ for raw_file in raw_files:
         result_type = result.get('Type', 'unknown')
         misconfigs = result.get('Misconfigurations', []) or []
 
-        # Classificar tipo de scan
+        # Classify scan type
         scan_type = 'other'
         target_lower = target.lower()
         if 'dockerfile' in target_lower or result_type == 'dockerfile':
@@ -205,10 +205,10 @@ for raw_file in raw_files:
             if len(by_type[scan_type]['findings']) < 20:
                 by_type[scan_type]['findings'].append(finding)
 
-# Ordenar por severidade
+# Sort by severity
 all_findings.sort(key=lambda x: severity_order.get(x['severity'], 4))
 
-# Determinar bloqueio
+# Determine blocking findings
 blocking_count = sum(
     1 for f in all_findings
     if f['status'] == 'FAIL' and severity_order.get(f['severity'], 4) <= threshold_level
@@ -244,7 +244,7 @@ main() {
       has_iac_files=true
       local df_count
       df_count=$(echo "${dockerfiles}" | wc -l | tr -d ' ')
-      echo -e "${CYAN}    Dockerfiles encontrados: ${df_count}${NC}" >&2
+      echo -e "${CYAN}    Dockerfiles found: ${df_count}${NC}" >&2
 
       while IFS= read -r dockerfile; do
         [ -z "${dockerfile}" ] && continue
@@ -268,7 +268,7 @@ main() {
       has_iac_files=true
       local cf_count
       cf_count=$(echo "${compose_files}" | wc -l | tr -d ' ')
-      echo -e "${CYAN}    Compose files encontrados: ${cf_count}${NC}" >&2
+      echo -e "${CYAN}    Compose files found: ${cf_count}${NC}" >&2
 
       while IFS= read -r compose_file; do
         [ -z "${compose_file}" ] && continue
@@ -292,7 +292,7 @@ main() {
       has_iac_files=true
       local kf_count
       kf_count=$(echo "${k8s_files}" | wc -l | tr -d ' ')
-      echo -e "${CYAN}    K8s manifests encontrados: ${kf_count}${NC}" >&2
+      echo -e "${CYAN}    K8s manifests found: ${kf_count}${NC}" >&2
 
       while IFS= read -r k8s_file; do
         [ -z "${k8s_file}" ] && continue
@@ -307,17 +307,17 @@ main() {
     fi
   fi
 
-  # ── Sem arquivos IaC ──
+  # ── No IaC files found ──
   if [ "${has_iac_files}" = "false" ]; then
     echo "NO_IAC_FILES"
     return 0
   fi
 
-  # ── Processar resultados ──
+  # ── Process results ──
   local result
   result=$(process_trivy_results "${raw_files}" "${INFRA_SCAN_SEVERITY}")
 
-  # Extrair contadores
+  # Extract counters
   local total_findings blocking_findings
   total_findings=$(echo "${result}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['totalFindings'])" 2>/dev/null || echo "0")
   blocking_findings=$(echo "${result}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['blockingFindings'])" 2>/dev/null || echo "0")
@@ -328,24 +328,24 @@ main() {
   medium=$(echo "${result}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['counts']['MEDIUM'])" 2>/dev/null || echo "0")
   low=$(echo "${result}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['counts']['LOW'])" 2>/dev/null || echo "0")
 
-  # Determinar status
+  # Determine status
   local status="pass"
   local summary=""
 
   if [ "${blocking_findings}" -gt 0 ]; then
     status="fail"
-    summary="${blocking_findings} finding(s) bloqueante(s) — ${critical} critical, ${high} high, ${medium} medium"
+    summary="${blocking_findings} blocking finding(s) — ${critical} critical, ${high} high, ${medium} medium"
   elif [ "${total_findings}" -gt 0 ]; then
     status="warn"
     summary="${total_findings} finding(s) — ${critical} critical, ${high} high, ${medium} medium, ${low} low"
   else
-    summary="Infraestrutura segura — sem findings"
+    summary="Infrastructure is secure — no findings"
   fi
 
-  # Output no formato: STATUS|SUMMARY|DETAILS_JSON
+  # Output format: STATUS|SUMMARY|DETAILS_JSON
   echo "${status}|${summary}|${result}"
 
-  # Limpar arquivos raw
+  # Clean up raw files
   rm -f "${REPORTS_DIR}"/trivy_*.json
 }
 

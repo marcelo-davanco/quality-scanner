@@ -1,247 +1,239 @@
-# SonarQube + NestJS/TypeScript
+# Quality Scanner
 
-Setup Docker para análise de código com SonarQube Community Edition, otimizado para projetos NestJS/TypeScript.
+> 🌐 **Translations:** [Português](./README.pt-BR.md) · [中文](./README.zh-CN.md) · [Español](./README.es.md) · [हिन्दी / اردو](./README.hi.md) · [Русский](./README.ru.md)
 
-## Pré-requisitos
+Docker-based code quality pipeline for NestJS/TypeScript projects, powered by SonarQube Community Edition. Runs 10 automated analysis steps — from secret detection to infrastructure security — and generates a JSON report for each scan.
 
-- **Docker** e **Docker Compose** instalados
+## Prerequisites
+
+- **Docker** and **Docker Compose**
 - **Node.js** >= 18
-- **npm** ou **yarn**
+- **npm** or **yarn**
 
-> ⚠️ No macOS/Linux, aumente o limite de memória virtual:
+> ⚠️ On macOS/Linux, increase the virtual memory limit required by SonarQube:
 > ```bash
 > sudo sysctl -w vm.max_map_count=524288
 > ```
 
 ## Quick Start
 
-### 1. Subir o SonarQube
+### 1. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and fill in your values. The only required change for a first run is `SONAR_TOKEN` (see step 2).
+
+### 2. Start SonarQube
 
 ```bash
 docker compose up -d
 ```
 
-Aguarde ~1 minuto para o SonarQube iniciar. Acesse: **http://localhost:9000**
+Wait ~1 minute for SonarQube to start, then open **http://localhost:9000**.
 
-- **Login padrão:** `admin` / `admin`
-- Na primeira vez, será solicitado alterar a senha.
+- **Default login:** `admin` / `admin`
+- You will be prompted to change the password on first login.
 
-### 2. Gerar Token de Acesso
+### 3. Generate an Access Token
 
-1. Acesse http://localhost:9000
-2. Vá em **My Account** → **Security** → **Generate Tokens**
-3. Crie um token do tipo **Project Analysis Token**
-4. Copie o token e cole no arquivo `.env`:
+1. Go to **My Account** → **Security** → **Generate Tokens**
+2. Create a token of type **Project Analysis Token**
+3. Copy the token and set it in `.env`:
 
 ```env
-SONAR_TOKEN=seu_token_aqui
+SONAR_TOKEN=your_token_here
 ```
 
-### 3. Configurar seu projeto NestJS
-
-Copie os seguintes arquivos para a raiz do seu projeto NestJS:
-
-- `sonar-project.properties`
-- `run-sonar.sh`
-- `.env` (ajuste o token)
-
-Ou configure o `jest` no `package.json` do seu projeto para gerar cobertura no formato LCOV:
-
-```json
-{
-  "jest": {
-    "coverageDirectory": "coverage",
-    "coverageReporters": ["text", "lcov", "clover"],
-    "collectCoverageFrom": [
-      "src/**/*.ts",
-      "!src/**/*.spec.ts",
-      "!src/**/*.module.ts",
-      "!src/main.ts"
-    ]
-  }
-}
-```
-
-### 4. Rodar a Análise
+### 4. Run the Scanner
 
 ```bash
-# Dar permissão ao script
-chmod +x run-sonar.sh
+# Scan the current directory
+./scan.sh .
 
-# Executar análise completa (testes + sonar)
-./run-sonar.sh
+# Scan any Node.js/NestJS project
+./scan.sh /path/to/your/project
 ```
 
-Ou manualmente:
+The scanner container will:
+
+1. Install project dependencies
+2. Run all 10 analysis steps
+3. Save JSON reports to `./reports/<date>/<scan-id>/`
+
+### 5. View Results
+
+- **SonarQube dashboard:** http://localhost:9000/dashboard?id=your-project
+- **Local reports:** `./reports/`
+
+---
+
+## Analysis Steps
+
+| Step | Tool | What it checks |
+|------|------|----------------|
+| 1 | **Gitleaks** | Hardcoded secrets and credentials |
+| 2 | **TypeScript** | Compilation errors |
+| 3 | **ESLint** | Code quality rules (centralized config) |
+| 4 | **Prettier** | Code formatting (centralized config) |
+| 5 | **npm audit** | Dependency vulnerabilities |
+| 6 | **Knip** | Dead code (unused exports, files, deps) |
+| 7 | **Jest** | Tests + coverage |
+| 8 | **SonarQube** | Static analysis + quality gate |
+| 9 | **Spectral** | OpenAPI contract validation *(optional)* |
+| 10 | **Trivy** | Infrastructure security (IaC) *(optional)* |
+
+---
+
+## Local Pre-Push Quality Gate
+
+Run the same checks locally before pushing:
 
 ```bash
-# Rodar testes com cobertura
-npm run test:cov
-
-# Rodar sonar-scanner
-npx sonar-scanner \
-  -Dsonar.host.url=http://localhost:9000 \
-  -Dsonar.token=SEU_TOKEN
+chmod +x quality-gate.sh
+./quality-gate.sh
 ```
 
-### 5. Ver Resultados
+---
 
-Acesse: **http://localhost:9000/dashboard?id=nestjs-project**
+## API Lint — OpenAPI Contract Validation (Step 9)
 
-## Comandos Úteis
+Validates OpenAPI/Swagger contracts using **Spectral**.
 
-| Comando | Descrição |
-|---------|-----------|
-| `docker compose up -d` | Iniciar SonarQube |
-| `docker compose down` | Parar SonarQube |
-| `docker compose down -v` | Parar e remover dados |
-| `docker compose logs -f sonarqube` | Ver logs do SonarQube |
-| `./run-sonar.sh` | Rodar análise completa |
-| `npm run test:cov` | Rodar apenas testes com cobertura |
-
-## O que o SonarQube analisa
-
-- **Bugs** — Problemas que podem causar erros em runtime
-- **Vulnerabilities** — Falhas de segurança
-- **Code Smells** — Problemas de manutenibilidade
-- **Coverage** — Cobertura de testes (linhas e branches)
-- **Duplications** — Código duplicado
-- **Security Hotspots** — Pontos que precisam revisão de segurança
-
-## API Lint — Validação de Contratos OpenAPI (Step 9)
-
-O scanner inclui um step opcional para validação de contratos OpenAPI/Swagger usando **Spectral**. Ele garante que a documentação da API segue padrões REST da organização.
-
-### Ativação
+### Activation
 
 ```bash
-# Via variável de ambiente no scan
-ENABLE_API_LINT=true ./scan.sh /caminho/do/projeto
+# Via environment variable
+ENABLE_API_LINT=true ./scan.sh /path/to/project
 
 # Via docker-compose
 ENABLE_API_LINT=true docker compose --profile scan up scanner
 ```
 
-### O que é validado
+### What is validated
 
-- Todas as rotas têm response `400` mapeado
-- Paths usam `kebab-case` (ex: `/meu-recurso`)
-- Propriedades de schema usam `camelCase`
-- Toda operação tem `operationId`, `description`, `summary` e `tags`
-- Paths não terminam com `/`
-- Responses 200/201 têm `content` definido
+- All routes have a `400` response mapped
+- Paths use `kebab-case` (e.g. `/my-resource`)
+- Schema properties use `camelCase`
+- Every operation has `operationId`, `description`, `summary`, and `tags`
+- Paths do not end with `/`
+- `200`/`201` responses have `content` defined
 
-### Configuração
+### Configuration
 
-| Variável | Default | Descrição |
-| -------- | ------- | --------- |
-| `ENABLE_API_LINT` | `false` | Ativa/desativa o step |
-| `API_LINT_SEVERITY` | `warn` | `warn` = apenas reporta, `error` = bloqueia pipeline |
-| `OPENAPI_FILE_PATH` | *(auto-detect)* | Caminho manual para o arquivo OpenAPI |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENABLE_API_LINT` | `false` | Enable/disable this step |
+| `API_LINT_SEVERITY` | `warn` | `warn` = report only, `error` = block pipeline |
+| `OPENAPI_FILE_PATH` | *(auto-detect)* | Manual path to the OpenAPI file |
 
-O arquivo OpenAPI é detectado automaticamente (`swagger.json`, `openapi.yaml`, etc.). Para customizar as regras, edite `scanner/configs/.spectral.yml`. Veja o guia completo em [`scanner/configs/README.md`](./scanner/configs/README.md).
+The OpenAPI file is auto-detected (`swagger.json`, `openapi.yaml`, etc.). To customize rules, edit `scanner/configs/.spectral.yml`. See the full guide in [`scanner/configs/README.md`](./scanner/configs/README.md).
 
-## Infra Scan — Segurança de Infraestrutura (Step 10)
+---
 
-O scanner inclui um step opcional para análise de segurança de infraestrutura usando **Trivy**. Ele varre `Dockerfile`, `docker-compose.yml` e manifests Kubernetes, bloqueando antes que cheguem ao cluster:
+## Infra Scan — Infrastructure Security (Step 10)
 
-- Imagens base desatualizadas ou usando tag `latest`
-- Containers rodando como `root`
-- Configurações de rede expostas (`hostNetwork`, `hostPID`)
-- Containers privilegiados
-- Falta de limites de recursos (CPU/memory)
-- Falta de `securityContext` e `HEALTHCHECK`
+Scans `Dockerfile`, `docker-compose.yml`, and Kubernetes manifests using **Trivy**.
 
-### Ativação
+### Activation
 
 ```bash
-# Via variável de ambiente no scan
-ENABLE_INFRA_SCAN=true ./scan.sh /caminho/do/projeto
+# Via environment variable
+ENABLE_INFRA_SCAN=true ./scan.sh /path/to/project
 
 # Via docker-compose
 ENABLE_INFRA_SCAN=true docker compose --profile scan up scanner
 ```
 
-### O que é varrido
+### What is scanned
 
-| Tipo | Arquivos Detectados | Exemplos de Findings |
-| ---- | ------------------- | -------------------- |
-| **Dockerfile** | `Dockerfile`, `Dockerfile.*` | Imagem `latest`, sem `USER`, sem `HEALTHCHECK`, uso de `ADD` |
-| **docker-compose** | `docker-compose.yml`, `compose.yaml` | `privileged: true`, portas expostas, volumes perigosos |
-| **Kubernetes** | `deployment.yaml`, `service.yaml`, etc. | `hostNetwork`, sem `securityContext`, sem limites de recursos |
+| Type | Detected Files | Example Findings |
+|------|----------------|------------------|
+| **Dockerfile** | `Dockerfile`, `Dockerfile.*` | `latest` image tag, no `USER`, no `HEALTHCHECK`, use of `ADD` |
+| **docker-compose** | `docker-compose.yml`, `compose.yaml` | `privileged: true`, exposed ports, dangerous volumes |
+| **Kubernetes** | `deployment.yaml`, `service.yaml`, etc. | `hostNetwork`, missing `securityContext`, no resource limits |
 
-### Configuração
+### Configuration
 
-| Variável | Default | Descrição |
-| -------- | ------- | --------- |
-| `ENABLE_INFRA_SCAN` | `false` | Ativa/desativa o step |
-| `INFRA_SCAN_SEVERITY` | `HIGH` | Nível mínimo para bloqueio: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` |
-| `SCAN_DOCKERFILE` | `true` | Ativa varredura de Dockerfiles |
-| `SCAN_K8S` | `true` | Ativa varredura de manifests Kubernetes |
-| `SCAN_COMPOSE` | `true` | Ativa varredura de docker-compose |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENABLE_INFRA_SCAN` | `false` | Enable/disable this step |
+| `INFRA_SCAN_SEVERITY` | `HIGH` | Minimum blocking severity: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` |
+| `SCAN_DOCKERFILE` | `true` | Enable Dockerfile scanning |
+| `SCAN_K8S` | `true` | Enable Kubernetes manifest scanning |
+| `SCAN_COMPOSE` | `true` | Enable docker-compose scanning |
 
-### Severity Thresholds
+To customize security policies, edit `scanner/configs/trivy-policy.yaml`. See the full guide in [`scanner/configs/README.md`](./scanner/configs/README.md).
 
-- **`CRITICAL`** — bloqueia sempre (ex: container privilegiado em K8s)
-- **`HIGH`** — bloqueia por padrão (ex: rodando como root, hostNetwork)
-- **`MEDIUM`** / **`LOW`** — apenas reporta (ex: falta de seccomp profile)
+---
 
-Para customizar as políticas de segurança, edite `scanner/configs/trivy-policy.yaml`. Veja o guia completo em [`scanner/configs/README.md`](./scanner/configs/README.md).
+## Useful Commands
 
-## Estrutura dos Arquivos
+| Command | Description |
+|---------|-------------|
+| `docker compose up -d` | Start SonarQube |
+| `docker compose down` | Stop SonarQube |
+| `docker compose down -v` | Stop and remove all data |
+| `docker compose logs -f sonarqube` | View SonarQube logs |
+| `./scan.sh /path/to/project` | Run full analysis |
+| `./quality-gate.sh` | Run local pre-push checks |
 
-```
-sonar/
+---
+
+## Project Structure
+
+```text
+quality-scanner/
 ├── docker-compose.yml          # SonarQube + PostgreSQL + Scanner
-├── sonar-project.properties    # Configuração do scanner
-├── quality-gate.sh             # Quality gate local (11 steps)
-├── run-sonar.sh                # Script de análise automatizada
-├── scan.sh                     # Wrapper para o scanner Docker
-├── .env                        # Variáveis de ambiente (não commitado)
-├── .env.example                # Exemplo de variáveis
+├── sonar-project.properties    # Scanner configuration
+├── quality-gate.sh             # Local pre-push quality gate
+├── run-sonar.sh                # Standalone SonarQube analysis script
+├── scan.sh                     # Docker scanner wrapper
+├── .env.example                # Environment variable template
 ├── scanner/
-│   ├── Dockerfile              # Imagem do scanner
-│   ├── entrypoint.sh           # Pipeline de 10 steps (container)
+│   ├── Dockerfile              # Scanner image
+│   ├── entrypoint.sh           # 10-step pipeline (container)
 │   ├── configs/
-│   │   ├── .eslintrc.js        # Regras ESLint centralizadas
-│   │   ├── .prettierrc         # Formatação Prettier
-│   │   ├── .gitleaks.toml      # Detecção de secrets
-│   │   ├── .spectral.yml       # Regras OpenAPI/Swagger
-│   │   ├── trivy-policy.yaml   # Políticas de segurança Trivy
-│   │   ├── sonar-project.properties
-│   │   └── README.md           # Guia de configuração
+│   │   ├── .eslintrc.js        # Centralized ESLint rules
+│   │   ├── .prettierrc         # Prettier formatting config
+│   │   ├── .gitleaks.toml      # Secret detection rules
+│   │   ├── .spectral.yml       # OpenAPI/Swagger rules
+│   │   ├── trivy-policy.yaml   # Trivy security policies
+│   │   └── README.md           # Configuration guide
 │   ├── scripts/
-│   │   ├── swagger-lint.sh     # Script de lint OpenAPI
-│   │   └── infra-scan.sh       # Script de segurança de infraestrutura
+│   │   ├── swagger-lint.sh     # OpenAPI lint script
+│   │   └── infra-scan.sh       # Infrastructure security script
 │   └── test/
-│       ├── fixtures/
-│       │   ├── swagger-valid.json
-│       │   ├── swagger-invalid.json
-│       │   ├── Dockerfile.safe
-│       │   ├── Dockerfile.unsafe
-│       │   ├── compose-safe.yml
-│       │   ├── compose-unsafe.yml
-│       │   ├── deployment-safe.yaml
-│       │   └── deployment-unsafe.yaml
-│       ├── test-api-lint.sh    # Testes do API Lint
-│       └── test-infra-scan.sh  # Testes do Infra Scan
+│       ├── fixtures/           # Safe/unsafe test fixtures
+│       ├── test-api-lint.sh    # API Lint tests
+│       └── test-infra-scan.sh  # Infra Scan tests
+├── quality-configs/            # Local quality gate configs
+├── dashboard/                  # Next.js results dashboard
+├── example-nestjs/             # Example NestJS project
 ├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
+---
+
 ## Troubleshooting
 
-### SonarQube não inicia
+### SonarQube does not start
+
 ```bash
-# Verificar logs
+# Check logs
 docker compose logs sonarqube
 
-# Problema comum no Linux/macOS - aumentar vm.max_map_count
+# Common fix on Linux/macOS — increase vm.max_map_count
 sudo sysctl -w vm.max_map_count=524288
 ```
 
-### Erro de memória
-Adicione ao `docker-compose.yml` no serviço `sonarqube`:
+### Out of memory error
+
+Add to the `sonarqube` service in `docker-compose.yml`:
+
 ```yaml
 deploy:
   resources:
@@ -249,5 +241,16 @@ deploy:
       memory: 2g
 ```
 
-### Scanner não encontra arquivos
-Verifique se o `sonar-project.properties` está na raiz do projeto e os paths estão corretos.
+### Scanner cannot find files
+
+Make sure `sonar-project.properties` is at the project root and all paths are correct.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before submitting a pull request.
+
+## License
+
+[MIT](./LICENSE)

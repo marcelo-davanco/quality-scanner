@@ -21,6 +21,8 @@ NC="${NC:-\033[0m}"
 # ──────────────────────────────────────────────────────────
 PROJECT_DIR="${1:-/project}"
 REPORTS_DIR="${2:-/reports}"
+# CONFIGS_DIR is intentionally unused — Trivy uses its own built-in policies
+# shellcheck disable=SC2034
 CONFIGS_DIR="${3:-/quality/configs}"
 
 INFRA_SCAN_SEVERITY="${INFRA_SCAN_SEVERITY:-HIGH}"
@@ -118,6 +120,8 @@ detect_k8s_manifests() {
 run_trivy_scan() {
   local target="$1"
   local output_file="$2"
+  # scan_label is reserved for future logging use
+  # shellcheck disable=SC2034
   local scan_label="$3"
 
   trivy config "${target}" \

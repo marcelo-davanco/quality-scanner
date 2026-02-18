@@ -64,13 +64,13 @@ if [ ! -d /project/node_modules ]; then
   cd /project && npm ci --silent 2>&1 || npm install --silent 2>&1
 fi
 
-cd /project
+cd /project || exit 1
 
 # ============================================================
 # [1/8] Gitleaks — Secrets
 # ============================================================
 echo -e "\n${CYAN}[1/${TOTAL_STEPS}] Gitleaks — Verificando secrets...${NC}"
-GITLEAKS_OUTPUT=$(gitleaks detect --source /project --no-git --config "${CONFIGS_DIR}/.gitleaks.toml" --report-format json --report-path "${REPORTS_DIR}/gitleaks_raw.json" 2>&1 || true)
+gitleaks detect --source /project --no-git --config "${CONFIGS_DIR}/.gitleaks.toml" --report-format json --report-path "${REPORTS_DIR}/gitleaks_raw.json" 2>&1 || true
 
 if [ -f "${REPORTS_DIR}/gitleaks_raw.json" ] && [ -s "${REPORTS_DIR}/gitleaks_raw.json" ]; then
   LEAKS_COUNT=$(python3 -c "import json; d=json.load(open('${REPORTS_DIR}/gitleaks_raw.json')); print(len(d))" 2>/dev/null || echo "0")

@@ -1,70 +1,69 @@
 # ============================================================
-# Trivy — Políticas de Segurança de Infraestrutura
-# Usado pelo step de Infra Scan do Quality Scanner
+# Trivy — Infrastructure Security Policies
+# Used by the Infra Scan step of Quality Scanner
 # ============================================================
 #
-# Referência: https://aquasecurity.github.io/trivy/latest/docs/configuration/
+# Reference: https://aquasecurity.github.io/trivy/latest/docs/configuration/
 #
-# Severidades disponíveis: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN
-# Scanners disponíveis: misconfig, vuln, secret
+# Available severities: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN
+# Available scanners: misconfig, vuln, secret
 # ============================================================
 
-# Severidades que serão reportadas (filtro mínimo)
+# Severities to report (minimum filter)
 severity:
   - CRITICAL
   - HIGH
   - MEDIUM
 
-# Scanners ativos para IaC
+# Active scanners for IaC
 scanners:
   - misconfig
 
-# Formato de saída
+# Output format
 format: json
 
-# Não falhar automaticamente — o controle de bloqueio é feito pelo infra-scan.sh
+# Do not fail automatically — blocking control is handled by infra-scan.sh
 exit-code: 0
 
-# Configurações de misconfiguration
+# Misconfiguration settings
 misconfig:
-  # Checkers Rego/built-in do Trivy para IaC
-  # Cobre: Dockerfile, Kubernetes, docker-compose, Terraform, CloudFormation
+  # Trivy built-in/Rego checkers for IaC
+  # Covers: Dockerfile, Kubernetes, docker-compose, Terraform, CloudFormation
   include:
     - docker
     - kubernetes
-
 # ============================================================
-# Regras de Segurança Cobertas (built-in do Trivy)
+# Security Rules Covered (Trivy built-in)
 # ============================================================
 #
 # DOCKERFILE:
-#   - DS001: Imagem base usando tag 'latest' (HIGH)
-#   - DS002: Container rodando como root (HIGH)
-#   - DS005: Uso de ADD ao invés de COPY (LOW)
-#   - DS006: Falta de HEALTHCHECK (LOW)
-#   - DS012: Uso de apt-get sem --no-install-recommends (LOW)
-#   - DS013: Falta de USER instruction (HIGH)
-#   - DS014: Uso de sudo (MEDIUM)
-#   - DS015: Falta de apt-get clean (LOW)
-#   - DS026: Exposição de porta privilegiada (LOW)
+#   - DS001: Base image using 'latest' tag (HIGH)
+#   - DS002: Container running as root (HIGH)
+#   - DS005: Use of ADD instead of COPY (LOW)
+#   - DS006: Missing HEALTHCHECK (LOW)
+#   - DS012: apt-get without --no-install-recommends (LOW)
+#   - DS013: Missing USER instruction (HIGH)
+#   - DS014: Use of sudo (MEDIUM)
+#   - DS015: Missing apt-get clean (LOW)
+#   - DS026: Privileged port exposed (LOW)
 #
 # KUBERNETES:
-#   - KSV001: Containers rodando como root (HIGH)
-#   - KSV003: Capabilities não dropadas (MEDIUM)
-#   - KSV006: hostNetwork habilitado (HIGH)
-#   - KSV009: hostPID habilitado (HIGH)
-#   - KSV010: hostIPC habilitado (HIGH)
-#   - KSV011: Limites de CPU não definidos (MEDIUM)
-#   - KSV012: Falta de readOnlyRootFilesystem (LOW)
-#   - KSV013: Falta de limites de memória (MEDIUM)
-#   - KSV014: Container privilegiado (CRITICAL)
-#   - KSV020: Falta de runAsNonRoot (HIGH)
-#   - KSV021: Falta de securityContext (HIGH)
-#   - KSV030: Falta de seccomp profile (MEDIUM)
+#   - KSV001: Containers running as root (HIGH)
+#   - KSV003: Capabilities not dropped (MEDIUM)
+#   - KSV006: hostNetwork enabled (HIGH)
+#   - KSV009: hostPID enabled (HIGH)
+#   - KSV010: hostIPC enabled (HIGH)
+#   - KSV011: CPU limits not set (MEDIUM)
+#   - KSV012: Missing readOnlyRootFilesystem (LOW)
+#   - KSV013: Missing memory limits (MEDIUM)
+#   - KSV014: Privileged container (CRITICAL)
+#   - KSV020: Missing runAsNonRoot (HIGH)
+#   - KSV021: Missing securityContext (HIGH)
+#   - KSV030: Missing seccomp profile (MEDIUM)
 #
 # DOCKER-COMPOSE:
-#   - Portas expostas desnecessariamente
-#   - Volumes com permissões excessivas
+#   - Ports exposed unnecessarily
+#   - Volumes with excessive permissions
 #   - privileged: true
-#   - Falta de read_only
+#   - Missing read_only
 # ============================================================

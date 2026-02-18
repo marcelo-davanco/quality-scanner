@@ -1,5 +1,5 @@
-// Knip — Detecção de código morto, exports não usados, dependências órfãs
-// Rodar: npx knip
+// Knip — Dead code detection, unused exports, orphan dependencies
+// Run: npx knip
 // Docs: https://knip.dev
 import type { KnipConfig } from 'knip';
 
@@ -15,13 +15,13 @@ const config: KnipConfig = {
     'dist/**',
   ],
   ignoreDependencies: [
-    'ts-jest',        // usado via config, não import direto
+    'ts-jest',        // used via config, not direct import
     'tsconfig-paths',
     '@types/*',
   ],
-  // NestJS usa decorators e DI — knip não detecta uso via reflection
+  // NestJS uses decorators and DI — knip cannot detect usage via reflection
   ignoreExportsUsedInFile: true,
-  // Plugins para frameworks
+  // Framework plugins
   nestjs: true,
   jest: true,
 };

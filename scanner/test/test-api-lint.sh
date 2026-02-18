@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-# Testes — Validação de Contratos OpenAPI (Step 9)
-# Executa cenários de teste para o swagger-lint.sh
+# Tests — OpenAPI Contract Validation (Step 9)
+# Runs test scenarios for swagger-lint.sh
 # ============================================================
 
 set -euo pipefail
@@ -36,8 +36,8 @@ assert_contains() {
     TESTS_PASSED=$((TESTS_PASSED + 1))
   else
     echo -e "${RED}  ✗ ${test_name}${NC}"
-    echo -e "${RED}    Esperado conter: '${expected}'${NC}"
-    echo -e "${RED}    Recebido: '${actual}'${NC}"
+    echo -e "${RED}    Expected to contain: '${expected}'${NC}"
+    echo -e "${RED}    Got: '${actual}'${NC}"
     TESTS_FAILED=$((TESTS_FAILED + 1))
   fi
 }
@@ -50,7 +50,7 @@ assert_not_contains() {
     TESTS_PASSED=$((TESTS_PASSED + 1))
   else
     echo -e "${RED}  ✗ ${test_name}${NC}"
-    echo -e "${RED}    Não deveria conter: '${unexpected}'${NC}"
+    echo -e "${RED}    Should not contain: '${unexpected}'${NC}"
     TESTS_FAILED=$((TESTS_FAILED + 1))
   fi
 }
@@ -63,8 +63,8 @@ assert_equals() {
     TESTS_PASSED=$((TESTS_PASSED + 1))
   else
     echo -e "${RED}  ✗ ${test_name}${NC}"
-    echo -e "${RED}    Esperado: '${expected}'${NC}"
-    echo -e "${RED}    Recebido: '${actual}'${NC}"
+    echo -e "${RED}    Expected: '${expected}'${NC}"
+    echo -e "${RED}    Got: '${actual}'${NC}"
     TESTS_FAILED=$((TESTS_FAILED + 1))
   fi
 }
@@ -77,7 +77,7 @@ assert_file_exists() {
     TESTS_PASSED=$((TESTS_PASSED + 1))
   else
     echo -e "${RED}  ✗ ${test_name}${NC}"
-    echo -e "${RED}    Arquivo não encontrado: ${file}${NC}"
+    echo -e "${RED}    File not found: ${file}${NC}"
     TESTS_FAILED=$((TESTS_FAILED + 1))
   fi
 }
@@ -90,40 +90,40 @@ assert_valid_json() {
     TESTS_PASSED=$((TESTS_PASSED + 1))
   else
     echo -e "${RED}  ✗ ${test_name}${NC}"
-    echo -e "${RED}    JSON inválido${NC}"
+    echo -e "${RED}    Invalid JSON${NC}"
     TESTS_FAILED=$((TESTS_FAILED + 1))
   fi
 }
 
 echo -e "\n${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BOLD}${CYAN}  Testes — API Lint (Spectral)${NC}"
+echo -e "${BOLD}${CYAN}  Tests — API Lint (Spectral)${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 # ──────────────────────────────────────────────────────────
-# Pré-requisitos
+# Prerequisites
 # ──────────────────────────────────────────────────────────
-echo -e "\n${CYAN}[Pré-requisitos]${NC}"
-assert_file_exists "${LINT_SCRIPT}" "swagger-lint.sh existe"
-assert_file_exists "${CONFIGS_DIR}/.spectral.yml" ".spectral.yml existe"
-assert_file_exists "${FIXTURES_DIR}/swagger-valid.json" "Fixture válida existe"
-assert_file_exists "${FIXTURES_DIR}/swagger-invalid.json" "Fixture inválida existe"
+echo -e "\n${CYAN}[Prerequisites]${NC}"
+assert_file_exists "${LINT_SCRIPT}" "swagger-lint.sh exists"
+assert_file_exists "${CONFIGS_DIR}/.spectral.yml" ".spectral.yml exists"
+assert_file_exists "${FIXTURES_DIR}/swagger-valid.json" "Valid fixture exists"
+assert_file_exists "${FIXTURES_DIR}/swagger-invalid.json" "Invalid fixture exists"
 
-# Verificar se Spectral está disponível
+# Check if Spectral is available
 TESTS_TOTAL=$((TESTS_TOTAL + 1))
 if command -v spectral &> /dev/null || npx spectral --version &> /dev/null 2>&1; then
-  echo -e "${GREEN}  ✓ Spectral CLI disponível${NC}"
+  echo -e "${GREEN}  ✓ Spectral CLI available${NC}"
   TESTS_PASSED=$((TESTS_PASSED + 1))
   SPECTRAL_AVAILABLE=true
 else
-  echo -e "${YELLOW}  ⚠ Spectral CLI não disponível — testes de execução serão pulados${NC}"
+  echo -e "${YELLOW}  ⚠ Spectral CLI not available — execution tests will be skipped${NC}"
   TESTS_PASSED=$((TESTS_PASSED + 1))
   SPECTRAL_AVAILABLE=false
 fi
 
 # ──────────────────────────────────────────────────────────
-# Cenário 1: API válida — deve passar sem violações
+# Scenario 1: Valid API — should pass with no violations
 # ──────────────────────────────────────────────────────────
-echo -e "\n${CYAN}[Cenário 1] API válida — 0 violações esperadas${NC}"
+echo -e "\n${CYAN}[Scenario 1] Valid API — 0 violations expected${NC}"
 if [ "${SPECTRAL_AVAILABLE}" = "true" ]; then
   PROJECT_VALID="${TMP_DIR}/project-valid"
   mkdir -p "${PROJECT_VALID}"
@@ -135,19 +135,19 @@ if [ "${SPECTRAL_AVAILABLE}" = "true" ]; then
   STATUS=$(echo "${RESULT}" | cut -d'|' -f1)
   DETAILS_JSON=$(echo "${RESULT}" | cut -d'|' -f3-)
 
-  assert_equals "${STATUS}" "pass" "Status deve ser 'pass' para API válida"
-  assert_valid_json "${DETAILS_JSON}" "Output deve ser JSON válido"
+  assert_equals "${STATUS}" "pass" "Status should be 'pass' for valid API"
+  assert_valid_json "${DETAILS_JSON}" "Output should be valid JSON"
 
   VIOLATIONS=$(echo "${DETAILS_JSON}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('totalViolations',0))" 2>/dev/null || echo "-1")
-  assert_equals "${VIOLATIONS}" "0" "Deve ter 0 violações"
+  assert_equals "${VIOLATIONS}" "0" "Should have 0 violations"
 else
-  echo -e "${YELLOW}  ⚠ Pulado — Spectral não disponível${NC}"
+  echo -e "${YELLOW}  ⚠ Skipped — Spectral not available${NC}"
 fi
 
 # ──────────────────────────────────────────────────────────
-# Cenário 2: API inválida (severity=warn) — reporta mas não bloqueia
+# Scenario 2: Invalid API (severity=warn) — reports but does not block
 # ──────────────────────────────────────────────────────────
-echo -e "\n${CYAN}[Cenário 2] API inválida + severity=warn — reporta sem bloquear${NC}"
+echo -e "\n${CYAN}[Scenario 2] Invalid API + severity=warn — reports without blocking${NC}"
 if [ "${SPECTRAL_AVAILABLE}" = "true" ]; then
   PROJECT_INVALID="${TMP_DIR}/project-invalid"
   mkdir -p "${PROJECT_INVALID}"
@@ -159,68 +159,68 @@ if [ "${SPECTRAL_AVAILABLE}" = "true" ]; then
   STATUS=$(echo "${RESULT}" | cut -d'|' -f1)
   DETAILS_JSON=$(echo "${RESULT}" | cut -d'|' -f3-)
 
-  assert_equals "${STATUS}" "warn" "Status deve ser 'warn' (não 'fail') com severity=warn"
-  assert_valid_json "${DETAILS_JSON}" "Output deve ser JSON válido"
+  assert_equals "${STATUS}" "warn" "Status should be 'warn' (not 'fail') with severity=warn"
+  assert_valid_json "${DETAILS_JSON}" "Output should be valid JSON"
 
   VIOLATIONS=$(echo "${DETAILS_JSON}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('totalViolations',0))" 2>/dev/null || echo "0")
   TESTS_TOTAL=$((TESTS_TOTAL + 1))
   if [ "${VIOLATIONS}" -gt 0 ]; then
-    echo -e "${GREEN}  ✓ Violações detectadas: ${VIOLATIONS}${NC}"
+    echo -e "${GREEN}  ✓ Violations detected: ${VIOLATIONS}${NC}"
     TESTS_PASSED=$((TESTS_PASSED + 1))
   else
-    echo -e "${RED}  ✗ Deveria ter detectado violações${NC}"
+    echo -e "${RED}  ✗ Should have detected violations${NC}"
     TESTS_FAILED=$((TESTS_FAILED + 1))
   fi
 else
-  echo -e "${YELLOW}  ⚠ Pulado — Spectral não disponível${NC}"
+  echo -e "${YELLOW}  ⚠ Skipped — Spectral not available${NC}"
 fi
 
 # ──────────────────────────────────────────────────────────
-# Cenário 3: API inválida (severity=error) — deve bloquear
+# Scenario 3: Invalid API (severity=error) — should block
 # ──────────────────────────────────────────────────────────
-echo -e "\n${CYAN}[Cenário 3] API inválida + severity=error — deve bloquear${NC}"
+echo -e "\n${CYAN}[Scenario 3] Invalid API + severity=error — should block${NC}"
 if [ "${SPECTRAL_AVAILABLE}" = "true" ]; then
   RESULT=$(OPENAPI_FILE_PATH="" API_LINT_SEVERITY="error" \
     bash "${LINT_SCRIPT}" "${PROJECT_INVALID}" "${TMP_DIR}" "${CONFIGS_DIR}" 2>/dev/null || echo "ERROR")
 
   STATUS=$(echo "${RESULT}" | cut -d'|' -f1)
 
-  assert_equals "${STATUS}" "fail" "Status deve ser 'fail' com severity=error e violações"
+  assert_equals "${STATUS}" "fail" "Status should be 'fail' with severity=error and violations"
 else
-  echo -e "${YELLOW}  ⚠ Pulado — Spectral não disponível${NC}"
+  echo -e "${YELLOW}  ⚠ Skipped — Spectral not available${NC}"
 fi
 
 # ──────────────────────────────────────────────────────────
-# Cenário 4: Sem arquivo OpenAPI — step ignorado
+# Scenario 4: No OpenAPI file — step skipped
 # ──────────────────────────────────────────────────────────
-echo -e "\n${CYAN}[Cenário 4] Sem arquivo OpenAPI — step deve ser ignorado${NC}"
+echo -e "\n${CYAN}[Scenario 4] No OpenAPI file — step should be skipped${NC}"
 PROJECT_EMPTY="${TMP_DIR}/project-empty"
 mkdir -p "${PROJECT_EMPTY}"
 
 RESULT=$(OPENAPI_FILE_PATH="" API_LINT_SEVERITY="warn" \
   bash "${LINT_SCRIPT}" "${PROJECT_EMPTY}" "${TMP_DIR}" "${CONFIGS_DIR}" 2>/dev/null || echo "ERROR")
 
-assert_equals "${RESULT}" "NO_FILE" "Deve retornar NO_FILE quando não há arquivo OpenAPI"
+assert_equals "${RESULT}" "NO_FILE" "Should return NO_FILE when no OpenAPI file exists"
 
 # ──────────────────────────────────────────────────────────
-# Cenário 5: Step desativado (ENABLE_API_LINT=false)
+# Scenario 5: Step disabled (ENABLE_API_LINT=false)
 # ──────────────────────────────────────────────────────────
-echo -e "\n${CYAN}[Cenário 5] Step desativado via ENABLE_API_LINT=false${NC}"
-# Este cenário é testado no nível do entrypoint, não do script
-# O swagger-lint.sh não verifica ENABLE_API_LINT — isso é responsabilidade do entrypoint
+echo -e "\n${CYAN}[Scenario 5] Step disabled via ENABLE_API_LINT=false${NC}"
+# This scenario is tested at the entrypoint level, not the script level
+# swagger-lint.sh does not check ENABLE_API_LINT — that is the entrypoint's responsibility
 TESTS_TOTAL=$((TESTS_TOTAL + 1))
 if grep -q 'ENABLE_API_LINT' "${SCRIPT_DIR}/../entrypoint.sh" 2>/dev/null; then
-  echo -e "${GREEN}  ✓ entrypoint.sh verifica ENABLE_API_LINT${NC}"
+  echo -e "${GREEN}  ✓ entrypoint.sh checks ENABLE_API_LINT${NC}"
   TESTS_PASSED=$((TESTS_PASSED + 1))
 else
-  echo -e "${RED}  ✗ entrypoint.sh não verifica ENABLE_API_LINT${NC}"
+  echo -e "${RED}  ✗ entrypoint.sh does not check ENABLE_API_LINT${NC}"
   TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 
 # ──────────────────────────────────────────────────────────
-# Cenário 6: Detecção automática com OPENAPI_FILE_PATH manual
+# Scenario 6: Auto-detection with manual OPENAPI_FILE_PATH
 # ──────────────────────────────────────────────────────────
-echo -e "\n${CYAN}[Cenário 6] Detecção com OPENAPI_FILE_PATH manual${NC}"
+echo -e "\n${CYAN}[Scenario 6] Detection with manual OPENAPI_FILE_PATH${NC}"
 if [ "${SPECTRAL_AVAILABLE}" = "true" ]; then
   PROJECT_CUSTOM="${TMP_DIR}/project-custom"
   mkdir -p "${PROJECT_CUSTOM}/docs"
@@ -230,22 +230,22 @@ if [ "${SPECTRAL_AVAILABLE}" = "true" ]; then
     bash "${LINT_SCRIPT}" "${PROJECT_CUSTOM}" "${TMP_DIR}" "${CONFIGS_DIR}" 2>/dev/null || echo "ERROR")
 
   STATUS=$(echo "${RESULT}" | cut -d'|' -f1)
-  assert_equals "${STATUS}" "pass" "Deve encontrar arquivo via OPENAPI_FILE_PATH manual"
+  assert_equals "${STATUS}" "pass" "Should find file via manual OPENAPI_FILE_PATH"
 else
-  echo -e "${YELLOW}  ⚠ Pulado — Spectral não disponível${NC}"
+  echo -e "${YELLOW}  ⚠ Skipped — Spectral not available${NC}"
 fi
 
 # ──────────────────────────────────────────────────────────
-# Cenário 7: Validação do formato JSON de output
+# Scenario 7: JSON output format validation
 # ──────────────────────────────────────────────────────────
-echo -e "\n${CYAN}[Cenário 7] Validação do schema do output JSON${NC}"
+echo -e "\n${CYAN}[Scenario 7] JSON output schema validation${NC}"
 if [ "${SPECTRAL_AVAILABLE}" = "true" ]; then
   RESULT=$(OPENAPI_FILE_PATH="" API_LINT_SEVERITY="warn" \
     bash "${LINT_SCRIPT}" "${PROJECT_VALID}" "${TMP_DIR}" "${CONFIGS_DIR}" 2>/dev/null || echo "ERROR")
 
   DETAILS_JSON=$(echo "${RESULT}" | cut -d'|' -f3-)
 
-  # Verificar campos obrigatórios no JSON
+  # Check required fields in JSON
   HAS_FIELDS=$(echo "${DETAILS_JSON}" | python3 -c "
 import json, sys
 d = json.loads(sys.stdin.read())
@@ -257,9 +257,9 @@ else:
     print('OK')
 " 2>/dev/null || echo "ERROR")
 
-  assert_equals "${HAS_FIELDS}" "OK" "Output JSON contém todos os campos obrigatórios"
+  assert_equals "${HAS_FIELDS}" "OK" "Output JSON contains all required fields"
 
-  # Verificar sub-campos de counts
+  # Check counts sub-fields
   HAS_COUNTS=$(echo "${DETAILS_JSON}" | python3 -c "
 import json, sys
 d = json.loads(sys.stdin.read())
@@ -272,22 +272,22 @@ else:
     print('OK')
 " 2>/dev/null || echo "ERROR")
 
-  assert_equals "${HAS_COUNTS}" "OK" "Counts contém error, warn, info, hint"
+  assert_equals "${HAS_COUNTS}" "OK" "Counts contains error, warn, info, hint"
 else
-  echo -e "${YELLOW}  ⚠ Pulado — Spectral não disponível${NC}"
+  echo -e "${YELLOW}  ⚠ Skipped — Spectral not available${NC}"
 fi
 
 # ──────────────────────────────────────────────────────────
-# Resultado
+# Result
 # ──────────────────────────────────────────────────────────
 echo -e "\n${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${CYAN}  Total: ${TESTS_TOTAL} | Passed: ${TESTS_PASSED} | Failed: ${TESTS_FAILED}${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 if [ "${TESTS_FAILED}" -gt 0 ]; then
-  echo -e "${RED}${BOLD}  TESTES FALHARAM${NC}\n"
+  echo -e "${RED}${BOLD}  TESTS FAILED${NC}\n"
   exit 1
 else
-  echo -e "${GREEN}${BOLD}  TODOS OS TESTES PASSARAM${NC}\n"
+  echo -e "${GREEN}${BOLD}  ALL TESTS PASSED${NC}\n"
   exit 0
 fi

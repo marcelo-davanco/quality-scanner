@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Example NestJS API",
-    "description": "API de exemplo para validação de contratos OpenAPI. Segue todos os padrões REST da organização.",
+    "description": "Example API for OpenAPI contract validation. Follows all organization REST standards.",
     "version": "1.0.0",
     "contact": {
       "name": "Quality Team",
@@ -12,37 +12,37 @@
   "servers": [
     {
       "url": "http://localhost:3000",
-      "description": "Servidor de desenvolvimento"
+      "description": "Development server"
     }
   ],
   "tags": [
-    { "name": "users", "description": "Operações de usuários" },
-    { "name": "system", "description": "Operações do sistema" }
+    { "name": "users", "description": "User operations" },
+    { "name": "system", "description": "System operations" }
   ],
   "paths": {
     "/users": {
       "get": {
         "operationId": "listUsers",
-        "summary": "Lista todos os usuários",
-        "description": "Retorna uma lista paginada de todos os usuários cadastrados no sistema.",
+        "summary": "List all users",
+        "description": "Returns a paginated list of all users registered in the system.",
         "tags": ["users"],
         "parameters": [
           {
             "name": "page",
             "in": "query",
-            "description": "Número da página",
+            "description": "Page number",
             "schema": { "type": "integer", "default": 1 }
           },
           {
             "name": "limit",
             "in": "query",
-            "description": "Itens por página",
+            "description": "Items per page",
             "schema": { "type": "integer", "default": 20 }
           }
         ],
         "responses": {
           "200": {
-            "description": "Lista de usuários retornada com sucesso",
+            "description": "User list returned successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -61,7 +61,7 @@
             }
           },
           "400": {
-            "description": "Parâmetros de paginação inválidos",
+            "description": "Invalid pagination parameters",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -72,8 +72,8 @@
       },
       "post": {
         "operationId": "createUser",
-        "summary": "Cria um novo usuário",
-        "description": "Cria um novo usuário no sistema com os dados fornecidos.",
+        "summary": "Create a new user",
+        "description": "Creates a new user in the system with the provided data.",
         "tags": ["users"],
         "requestBody": {
           "required": true,
@@ -85,7 +85,7 @@
         },
         "responses": {
           "201": {
-            "description": "Usuário criado com sucesso",
+            "description": "User created successfully",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/User" }
@@ -93,7 +93,7 @@
             }
           },
           "400": {
-            "description": "Dados de entrada inválidos",
+            "description": "Invalid input data",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -101,7 +101,7 @@
             }
           },
           "409": {
-            "description": "Usuário já existe com este email"
+            "description": "User already exists with this email"
           }
         }
       }
@@ -109,21 +109,21 @@
     "/users/{id}": {
       "get": {
         "operationId": "getUserById",
-        "summary": "Busca usuário por ID",
-        "description": "Retorna os dados de um usuário específico pelo seu identificador.",
+        "summary": "Get user by ID",
+        "description": "Returns the data of a specific user by their identifier.",
         "tags": ["users"],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "description": "Identificador único do usuário",
+            "description": "Unique user identifier",
             "schema": { "type": "string", "format": "uuid" }
           }
         ],
         "responses": {
           "200": {
-            "description": "Dados do usuário",
+            "description": "User data",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/User" }
@@ -131,7 +131,7 @@
             }
           },
           "400": {
-            "description": "ID inválido",
+            "description": "Invalid ID",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -139,21 +139,21 @@
             }
           },
           "404": {
-            "description": "Usuário não encontrado"
+            "description": "User not found"
           }
         }
       },
       "put": {
         "operationId": "updateUser",
-        "summary": "Atualiza um usuário",
-        "description": "Atualiza os dados de um usuário existente.",
+        "summary": "Update a user",
+        "description": "Updates the data of an existing user.",
         "tags": ["users"],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "description": "Identificador único do usuário",
+            "description": "Unique user identifier",
             "schema": { "type": "string", "format": "uuid" }
           }
         ],
@@ -167,7 +167,7 @@
         },
         "responses": {
           "200": {
-            "description": "Usuário atualizado com sucesso",
+            "description": "User updated successfully",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/User" }
@@ -175,7 +175,7 @@
             }
           },
           "400": {
-            "description": "Dados de entrada inválidos",
+            "description": "Invalid input data",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -183,30 +183,30 @@
             }
           },
           "404": {
-            "description": "Usuário não encontrado"
+            "description": "User not found"
           }
         }
       },
       "delete": {
         "operationId": "deleteUser",
-        "summary": "Remove um usuário",
-        "description": "Remove permanentemente um usuário do sistema.",
+        "summary": "Delete a user",
+        "description": "Permanently removes a user from the system.",
         "tags": ["users"],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "description": "Identificador único do usuário",
+            "description": "Unique user identifier",
             "schema": { "type": "string", "format": "uuid" }
           }
         ],
         "responses": {
           "204": {
-            "description": "Usuário removido com sucesso"
+            "description": "User deleted successfully"
           },
           "400": {
-            "description": "ID inválido",
+            "description": "Invalid ID",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -214,7 +214,7 @@
             }
           },
           "404": {
-            "description": "Usuário não encontrado"
+            "description": "User not found"
           }
         }
       }
@@ -222,12 +222,12 @@
     "/health-check": {
       "get": {
         "operationId": "healthCheck",
-        "summary": "Verifica saúde da API",
-        "description": "Endpoint de health check para monitoramento.",
+        "summary": "Check API health",
+        "description": "Health check endpoint for monitoring.",
         "tags": ["system"],
         "responses": {
           "200": {
-            "description": "API está saudável",
+            "description": "API is healthy",
             "content": {
               "application/json": {
                 "schema": {
@@ -241,7 +241,7 @@
             }
           },
           "400": {
-            "description": "Requisição malformada"
+            "description": "Malformed request"
           }
         }
       }
@@ -253,7 +253,7 @@
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
-          "name": { "type": "string", "example": "João Silva" },
+          "name": { "type": "string", "example": "John Smith" },
           "email": { "type": "string", "format": "email" },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }

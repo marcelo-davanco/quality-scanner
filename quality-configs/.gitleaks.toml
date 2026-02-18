@@ -1,11 +1,11 @@
-# Gitleaks — Detecção de secrets no código
-# Instalar: brew install gitleaks (macOS) ou docker run zricethezav/gitleaks
-# Rodar: gitleaks detect --source . --verbose
+# Gitleaks — Secret detection in source code
+# Install: brew install gitleaks (macOS) or docker run zricethezav/gitleaks
+# Run: gitleaks detect --source . --verbose
 
 title = "Gitleaks Config"
 
 [allowlist]
-  description = "Allowlist global"
+  description = "Global allowlist"
   paths = [
     '''node_modules''',
     '''dist''',
@@ -14,7 +14,7 @@ title = "Gitleaks Config"
     '''package-lock.json''',
   ]
 
-# Regras customizadas para o projeto
+# Custom rules for the project
 [[rules]]
   id = "hardcoded-password"
   description = "Hardcoded password in variable assignment"

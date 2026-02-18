@@ -1,5 +1,5 @@
 {
-  "// INSTRUÇÃO": "Adicione estas devDependencies ao package.json do projeto real",
+  "// INSTRUCTION": "Add these devDependencies to the real project's package.json",
   "// INSTALL": "npm install -D eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-sonarjs eslint-plugin-security eslint-plugin-import eslint-config-prettier prettier husky lint-staged @commitlint/cli @commitlint/config-conventional knip @stryker-mutator/core @stryker-mutator/jest-runner @stryker-mutator/typescript-checker @apidevtools/swagger-parser",
   "devDependencies": {
     "// === ESLint + Plugins ===": "",
@@ -11,7 +11,7 @@
     "eslint-plugin-import": "^2.29.0",
     "eslint-config-prettier": "^9.1.0",
 
-    "// === Formatação ===": "",
+    "// === Formatting ===": "",
     "prettier": "^3.2.0",
 
     "// === Git Hooks ===": "",
@@ -22,7 +22,7 @@
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
 
-    "// === Código Morto ===": "",
+    "// === Dead Code ===": "",
     "knip": "^5.0.0",
 
     "// === Mutation Testing ===": "",

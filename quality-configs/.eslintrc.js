@@ -1,5 +1,5 @@
-// ESLint config alinhada com SonarQube + boas práticas NestJS/TypeScript
-// O plugin eslint-plugin-sonarjs replica as mesmas regras do SonarQube localmente
+// ESLint config aligned with SonarQube + NestJS/TypeScript best practices
+// The eslint-plugin-sonarjs plugin replicates the same SonarQube rules locally
 module.exports = {
   parser: '@typescript-eslint/parser',
   parserOptions: {
@@ -20,7 +20,7 @@ module.exports = {
     'plugin:sonarjs/recommended',
     'plugin:security/recommended-legacy',
     'plugin:import/typescript',
-    'prettier', // deve ser o último — desliga regras que conflitam com Prettier
+    'prettier', // must be last — disables rules that conflict with Prettier
   ],
   root: true,
   env: {
@@ -91,7 +91,7 @@ module.exports = {
     'security/detect-possible-timing-attacks': 'warn',
 
     // ============================================================
-    // Import — organização e validação
+    // Import — organization and validation
     // ============================================================
     'import/order': ['warn', {
       groups: [
@@ -108,11 +108,11 @@ module.exports = {
     'import/no-cycle': ['warn', { maxDepth: 3 }],
 
     // ============================================================
-    // Gerais — boas práticas
+    // General — best practices
     // ============================================================
     'no-console': ['warn', { allow: ['warn', 'error'] }],
     'no-debugger': 'error',
-    'no-return-await': 'off', // usa a versão do @typescript-eslint
+    'no-return-await': 'off', // use the @typescript-eslint version instead
     '@typescript-eslint/return-await': ['error', 'in-try-catch'],
     'prefer-const': 'error',
     'no-var': 'error',

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   try {
     if (scanId && date) {
-      // Retornar reports de um scan específico
+      // Return reports for a specific scan
       const scanDir = path.join(REPORTS_DIR, date, scanId);
       if (!fs.existsSync(scanDir)) {
         return NextResponse.json({ error: 'Scan not found' }, { status: 404 });
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       return NextResponse.json(reports);
     }
 
-    // Listar todos os scans disponíveis
+    // List all available scans
     if (!fs.existsSync(REPORTS_DIR)) {
       return NextResponse.json({ scans: [] });
     }

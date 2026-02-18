@@ -1,7 +1,7 @@
 # ============================================================
-# Spectral Ruleset — Validação de Contratos OpenAPI/Swagger
-# Extensão do ruleset padrão OAS com regras customizadas
-# para garantir padrões REST da organização
+# Spectral Ruleset — OpenAPI/Swagger Contract Validation
+# Extension of the standard OAS ruleset with custom rules
+# to enforce organization REST standards
 # ============================================================
 
 extends:
@@ -9,7 +9,7 @@ extends:
 
 rules:
   # ──────────────────────────────────────────────────────────
-  # Regras padrão OAS (severity override)
+  # Standard OAS rules (severity override)
   # ──────────────────────────────────────────────────────────
   operation-operationId: error
   operation-description: error
@@ -18,21 +18,21 @@ rules:
   oas3-api-servers: warn
 
   # ──────────────────────────────────────────────────────────
-  # Regras customizadas — Padrões REST da organização
+  # Custom rules — Organization REST standards
   # ──────────────────────────────────────────────────────────
 
-  # Todas as rotas devem ter response 400 mapeado
+  # All routes must have a 400 response mapped
   operation-must-have-400-response:
-    description: "Toda operação deve mapear uma resposta 400 (Bad Request)."
+    description: "Every operation must map a 400 (Bad Request) response."
     severity: warn
     given: "$.paths[*][get,post,put,patch,delete]"
     then:
       field: "responses.400"
       function: truthy
 
-  # Nomenclatura kebab-case para paths
+  # kebab-case naming for paths
   paths-must-be-kebab-case:
-    description: "Paths devem usar kebab-case (ex: /meu-recurso, não /meuRecurso)."
+    description: "Paths must use kebab-case (e.g. /my-resource, not /myResource)."
     severity: warn
     given: "$.paths"
     then:
@@ -41,9 +41,9 @@ rules:
         match: "^(/[a-z0-9\\-{}]+)+$"
       field: "@key"
 
-  # Nomenclatura camelCase para propriedades de schema
+  # camelCase naming for schema properties
   properties-must-be-camel-case:
-    description: "Propriedades de schema devem usar camelCase."
+    description: "Schema properties must use camelCase."
     severity: warn
     given: "$..[?(@.type=='object')].properties"
     then:
@@ -52,27 +52,27 @@ rules:
         match: "^[a-z][a-zA-Z0-9]*$"
       field: "@key"
 
-  # Exigir tags em operações para organização
+  # Require tags on operations for organization
   operation-must-have-tags:
-    description: "Toda operação deve ter pelo menos uma tag."
+    description: "Every operation must have at least one tag."
     severity: warn
     given: "$.paths[*][get,post,put,patch,delete]"
     then:
       field: "tags"
       function: truthy
 
-  # Exigir summary em operações
+  # Require summary on operations
   operation-must-have-summary:
-    description: "Toda operação deve ter um summary."
+    description: "Every operation must have a summary."
     severity: warn
     given: "$.paths[*][get,post,put,patch,delete]"
     then:
       field: "summary"
       function: truthy
 
-  # Proibir paths com trailing slash
+  # Prohibit paths with trailing slash
   no-trailing-slash:
-    description: "Paths não devem terminar com /."
+    description: "Paths must not end with /."
     severity: error
     given: "$.paths"
     then:
@@ -81,9 +81,9 @@ rules:
         notMatch: "\\/$"
       field: "@key"
 
-  # Exigir content-type em responses com body
+  # Require content in responses with body
   response-must-have-content:
-    description: "Responses 200/201 devem ter content definido."
+    description: "200/201 responses must have content defined."
     severity: warn
     given: "$.paths[*][*].responses[?(@property == '200' || @property == '201')]"
     then:

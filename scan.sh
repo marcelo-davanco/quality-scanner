@@ -1,21 +1,21 @@
 #!/bin/bash
 # ============================================================
-# scan.sh — Roda o Quality Scanner em qualquer projeto
+# scan.sh — Runs the Quality Scanner against any project
 #
-# Uso:
-#   ./scan.sh /caminho/do/seu/projeto
-#   ./scan.sh .                          (projeto atual)
-#   ./scan.sh ~/projetos/meu-backend
+# Usage:
+#   ./scan.sh /path/to/your/project
+#   ./scan.sh .                          (current directory)
+#   ./scan.sh ~/projects/my-backend
 #
-# O container usa suas próprias configs (ESLint, Prettier, etc.)
-# e ignora qualquer config local do projeto.
+# The container uses its own centralized configs (ESLint, Prettier, etc.)
+# and ignores any local config files in the target project.
 # ============================================================
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Carregar variáveis do .env
+# Load variables from .env
 if [ -f "$SCRIPT_DIR/.env" ]; then
   set -a
   source "$SCRIPT_DIR/.env"
@@ -24,16 +24,16 @@ fi
 
 PROJECT_PATH="${1:-.}"
 
-# Resolver caminho absoluto
+# Resolve absolute path
 PROJECT_PATH="$(cd "$PROJECT_PATH" 2>/dev/null && pwd)" || {
-  echo "Erro: Diretório '$1' não encontrado."
+  echo "Error: Directory '$1' not found."
   exit 1
 }
 
-# Verificar se é um projeto Node.js
+# Check if it is a Node.js project
 if [ ! -f "$PROJECT_PATH/package.json" ]; then
-  echo "Erro: package.json não encontrado em $PROJECT_PATH"
-  echo "Certifique-se de apontar para a raiz de um projeto Node.js/NestJS."
+  echo "Error: package.json not found in $PROJECT_PATH"
+  echo "Make sure you are pointing to the root of a Node.js/NestJS project."
   exit 1
 fi
 
@@ -42,12 +42,12 @@ PROJECT_NAME=$(node -e "console.log(require('$PROJECT_PATH/package.json').name |
 echo ""
 echo "╔══════════════════════════════════════════════════════╗"
 echo "║  Quality Scanner                                     ║"
-echo "║  Projeto: $PROJECT_NAME"
+echo "║  Project: $PROJECT_NAME"
 echo "║  Path:    $PROJECT_PATH"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
 
-# Variáveis com defaults do .env
+# Variables with defaults from .env
 SCANNER_IMG="${SCANNER_IMAGE:-quality-scanner:latest}"
 SONAR_URL="${SONAR_HOST_URL:-http://localhost:9000}"
 SONAR_ADM_USER="${SONAR_ADMIN_USER:-admin}"
@@ -56,50 +56,50 @@ REPORTS="${REPORTS_DIR:-./reports}"
 REPORTS="${REPORTS#./}"
 DASH_PORT="${DASHBOARD_PORT:-3000}"
 
-# Garantir que o SonarQube + Scanner estão buildados
-echo "Verificando containers..."
+# Ensure SonarQube + Scanner images are built
+echo "Checking containers..."
 cd "$SCRIPT_DIR"
 
-# Build do scanner se necessário
+# Build scanner image if needed
 if ! docker image inspect "${SCANNER_IMG}" &>/dev/null; then
-  echo "Buildando imagem do scanner (primeira vez)..."
+  echo "Building scanner image (first time)..."
   docker build -t "${SCANNER_IMG}" ./scanner/
 fi
 
-# Subir SonarQube se não estiver rodando
+# Start SonarQube if not running
 if ! curl -s "${SONAR_URL}/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; then
-  echo "Subindo SonarQube..."
+  echo "Starting SonarQube..."
   docker compose up -d sonarqube db
-  echo "Aguardando SonarQube iniciar..."
+  echo "Waiting for SonarQube to start..."
   for i in $(seq 1 60); do
     if curl -s "${SONAR_URL}/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; then
-      echo "SonarQube está UP!"
+      echo "SonarQube is UP!"
       break
     fi
     if [ $i -eq 60 ]; then
-      echo "Timeout: SonarQube não iniciou em 5 minutos."
-      echo "Continuando sem SonarQube..."
+      echo "Timeout: SonarQube did not start within 5 minutes."
+      echo "Continuing without SonarQube..."
     fi
     sleep 5
   done
 fi
 
-# Gerar token se não existir
+# Generate token if not set
 if [ -z "$SONAR_TOKEN" ]; then
-  echo "Gerando token do SonarQube..."
+  echo "Generating SonarQube token..."
   TOKEN_RESPONSE=$(curl -s -u "${SONAR_ADM_USER}:${SONAR_ADM_PASS}" -X POST "${SONAR_URL}/api/user_tokens/generate?name=scanner-$(date +%s)" 2>/dev/null || true)
   SONAR_TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4 || true)
 fi
 
-# Criar projeto no SonarQube se não existir
+# Create project in SonarQube if it does not exist
 curl -s -u "${SONAR_ADM_USER}:${SONAR_ADM_PASS}" -X POST "${SONAR_URL}/api/projects/create?name=${PROJECT_NAME}&project=${PROJECT_NAME}" 2>/dev/null || true
 
-# Criar diretório de reports
+# Create reports directory
 mkdir -p "$SCRIPT_DIR/${REPORTS}"
 
-# Rodar o scanner via docker compose
+# Run the scanner via docker compose
 echo ""
-echo "Iniciando análise..."
+echo "Starting analysis..."
 echo ""
 
 PROJECT_PATH="$PROJECT_PATH" \
@@ -107,7 +107,7 @@ SONAR_PROJECT_KEY="${PROJECT_NAME}" \
 SONAR_TOKEN="${SONAR_TOKEN}" \
 docker compose --profile scan run --rm scanner
 
-# Encontrar o report mais recente
+# Find the most recent report
 LATEST_REPORT=$(find "$SCRIPT_DIR/${REPORTS}" -name "summary.json" -type f 2>/dev/null | sort -r | head -1)
 
 echo ""

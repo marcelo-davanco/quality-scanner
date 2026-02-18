@@ -1,8 +1,8 @@
 #!/bin/bash
 # ============================================================
-# Quality Scanner — Entrypoint do Container
-# Aplica configs centralizadas do container, ignora configs locais
-# Salva resultados em JSON para o dashboard
+# Quality Scanner — Container Entrypoint
+# Applies centralized container configs, ignores local project configs
+# Saves results as JSON for the dashboard
 # ============================================================
 
 RED='\033[0;31m'
@@ -50,7 +50,7 @@ fi
 
 PROJECT_NAME=$(node -e "console.log(require('/project/package.json').name || 'unknown')" 2>/dev/null || echo "unknown")
 
-# Criar diretório de reports
+# Create reports directory
 mkdir -p "${REPORTS_DIR}"
 
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -58,9 +58,9 @@ echo -e "${BOLD}${BLUE}  Quality Scanner — ${PROJECT_NAME}${NC}"
 echo -e "${BLUE}  Report: ${REPORTS_DIR}${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Instalar dependências do projeto se necessário
+# Install project dependencies if needed
 if [ ! -d /project/node_modules ]; then
-  echo -e "\n${CYAN}Instalando dependências do projeto...${NC}"
+  echo -e "\n${CYAN}Installing project dependencies...${NC}"
   cd /project && npm ci --silent 2>&1 || npm install --silent 2>&1
 fi
 
@@ -79,35 +79,35 @@ else
 fi
 
 if [ "${LEAKS_COUNT:-0}" -gt 0 ]; then
-  step_fail "Gitleaks: ${LEAKS_COUNT} secret(s) encontrado(s)"
-  # Converter raw para formato padronizado
+  step_fail "Gitleaks: ${LEAKS_COUNT} secret(s) found"
+  # Convert raw output to standardized format
   python3 -c "
 import json
 raw = json.load(open('${REPORTS_DIR}/gitleaks_raw.json'))
 items = [{'file': r.get('File',''), 'rule': r.get('RuleID',''), 'line': r.get('StartLine',0), 'match': r.get('Match','')[:80]} for r in raw]
 print(json.dumps(items))
 " > /tmp/gitleaks_details.json 2>/dev/null || echo "[]" > /tmp/gitleaks_details.json
-  write_report "gitleaks" "fail" "${LEAKS_COUNT} secret(s) encontrado(s)" "$(cat /tmp/gitleaks_details.json)"
+  write_report "gitleaks" "fail" "${LEAKS_COUNT} secret(s) found" "$(cat /tmp/gitleaks_details.json)"
 else
-  step_pass "Nenhum secret encontrado"
-  write_report "gitleaks" "pass" "Nenhum secret encontrado" "[]"
+  step_pass "No secrets found"
+  write_report "gitleaks" "pass" "No secrets found" "[]"
 fi
 rm -f "${REPORTS_DIR}/gitleaks_raw.json"
 
 # ============================================================
-# [2/8] TypeScript — Compilação
+# [2/8] TypeScript — Compilation
 # ============================================================
-echo -e "\n${CYAN}[2/${TOTAL_STEPS}] TypeScript — Verificando compilação...${NC}"
+echo -e "\n${CYAN}[2/${TOTAL_STEPS}] TypeScript — Checking compilation...${NC}"
 if [ -f /project/tsconfig.json ]; then
   TSC_OUTPUT=$(npx tsc --noEmit 2>&1 || true)
   TSC_ERRORS=$(echo "$TSC_OUTPUT" | grep -c "error TS" 2>/dev/null | tr -d '\n' || echo "0")
 
   if [ "${TSC_ERRORS:-0}" -eq 0 ]; then
-    step_pass "TypeScript compila sem erros"
-    write_report "typescript" "pass" "Compila sem erros" "[]"
+    step_pass "TypeScript compiles without errors"
+    write_report "typescript" "pass" "Compiles without errors" "[]"
   else
-    step_fail "TypeScript: ${TSC_ERRORS} erro(s) de compilação"
-    # Extrair detalhes dos erros
+    step_fail "TypeScript: ${TSC_ERRORS} compilation error(s)"
+    # Extract error details
     DETAILS=$(echo "$TSC_OUTPUT" | grep "error TS" | head -50 | python3 -c "
 import sys, json, re
 items = []
@@ -118,11 +118,11 @@ for line in sys.stdin:
     items.append({'file': m.group(1), 'line': int(m.group(2)), 'code': m.group(4), 'message': m.group(5)})
 print(json.dumps(items))
 " 2>/dev/null || echo "[]")
-    write_report "typescript" "fail" "${TSC_ERRORS} erro(s) de compilação" "$DETAILS"
+    write_report "typescript" "fail" "${TSC_ERRORS} compilation error(s)" "$DETAILS"
   fi
 else
-  step_warn "tsconfig.json não encontrado — pulando"
-  write_report "typescript" "skip" "tsconfig.json não encontrado" "[]"
+  step_warn "tsconfig.json not found — skipping"
+  write_report "typescript" "skip" "tsconfig.json not found" "[]"
 fi
 
 # ============================================================
@@ -175,40 +175,40 @@ print(json.dumps(items))
   fi
   rm -f "${REPORTS_DIR}/eslint_raw.json"
 else
-  step_warn "Diretório src/ não encontrado — pulando ESLint"
-  write_report "eslint" "skip" "Diretório src/ não encontrado" "[]"
+  step_warn "src/ directory not found — skipping ESLint"
+  write_report "eslint" "skip" "src/ directory not found" "[]"
 fi
 
 # ============================================================
-# [4/8] Prettier — Formatação (usa config do CONTAINER)
+# [4/8] Prettier — Formatting (uses CONTAINER config)
 # ============================================================
-echo -e "\n${CYAN}[4/${TOTAL_STEPS}] Prettier — Formatação (config centralizada)...${NC}"
+echo -e "\n${CYAN}[4/${TOTAL_STEPS}] Prettier — Formatting (centralized config)...${NC}"
 if [ -d /project/src ]; then
   PRETTIER_OUTPUT=$(npx prettier --check '/project/src/**/*.ts' \
     --config "${CONFIGS_DIR}/.prettierrc" 2>&1 || true)
 
   if echo "$PRETTIER_OUTPUT" | grep -q "All matched files use Prettier code style"; then
-    step_pass "Formatação OK"
-    write_report "prettier" "pass" "Todos os arquivos formatados" "[]"
+    step_pass "Formatting OK"
+    write_report "prettier" "pass" "All files formatted" "[]"
   else
     FILES_LIST=$(echo "$PRETTIER_OUTPUT" | grep "\.ts" | sed 's|/project/||g' || true)
     UNFORMATTED=$(echo "$FILES_LIST" | grep -c "\.ts" 2>/dev/null | tr -d '\n' || echo "0")
     if [ "${UNFORMATTED:-0}" -gt 0 ]; then
-      step_warn "Prettier: ${UNFORMATTED} arquivo(s) com formatação diferente do padrão"
+      step_warn "Prettier: ${UNFORMATTED} file(s) with non-standard formatting"
       DETAILS=$(echo "$FILES_LIST" | python3 -c "
 import sys, json
 items = [{'file': line.strip()} for line in sys.stdin if line.strip()]
 print(json.dumps(items))
 " 2>/dev/null || echo "[]")
-      write_report "prettier" "warn" "${UNFORMATTED} arquivo(s) com formatação diferente" "$DETAILS"
+      write_report "prettier" "warn" "${UNFORMATTED} file(s) with non-standard formatting" "$DETAILS"
     else
-      step_pass "Formatação OK"
-      write_report "prettier" "pass" "Todos os arquivos formatados" "[]"
+      step_pass "Formatting OK"
+      write_report "prettier" "pass" "All files formatted" "[]"
     fi
   fi
 else
-  step_warn "Diretório src/ não encontrado — pulando Prettier"
-  write_report "prettier" "skip" "Diretório src/ não encontrado" "[]"
+  step_warn "src/ directory not found — skipping Prettier"
+  write_report "prettier" "skip" "src/ directory not found" "[]"
 fi
 
 # ============================================================
@@ -250,15 +250,15 @@ elif [ "${HIGH:-0}" -gt 0 ]; then
   step_warn "npm audit: ${HIGH} high"
   write_report "audit" "warn" "${HIGH} high, ${MODERATE} moderate, ${LOW} low" "$DETAILS"
 else
-  step_pass "Sem vulnerabilidades críticas"
-  write_report "audit" "pass" "Sem vulnerabilidades críticas" "$DETAILS"
+  step_pass "No critical vulnerabilities"
+  write_report "audit" "pass" "No critical vulnerabilities" "$DETAILS"
 fi
 rm -f "${REPORTS_DIR}/audit_raw.json"
 
 # ============================================================
-# [6/8] Knip — Código morto
+# [6/8] Knip — Dead code
 # ============================================================
-echo -e "\n${CYAN}[6/${TOTAL_STEPS}] Knip — Código morto...${NC}"
+echo -e "\n${CYAN}[6/${TOTAL_STEPS}] Knip — Dead code...${NC}"
 KNIP_OUTPUT=$(npx knip --no-progress 2>&1 || true)
 
 KNIP_DETAILS=$(echo "$KNIP_OUTPUT" | python3 -c "
@@ -280,11 +280,11 @@ UNUSED_FILES=$(echo "$KNIP_OUTPUT" | grep -c "Unused file" 2>/dev/null | tr -d '
 UNUSED_DEPS=$(echo "$KNIP_OUTPUT" | grep -c "Unused depend" 2>/dev/null | tr -d '\n' || echo "0")
 
 if [ "${UNUSED_FILES:-0}" -gt 0 ] || [ "${UNUSED_EXPORTS:-0}" -gt 0 ] || [ "${UNUSED_DEPS:-0}" -gt 0 ]; then
-  step_warn "Knip: ${UNUSED_FILES} arquivo(s), ${UNUSED_EXPORTS} export(s), ${UNUSED_DEPS} dep(s) não usados"
+  step_warn "Knip: ${UNUSED_FILES} file(s), ${UNUSED_EXPORTS} export(s), ${UNUSED_DEPS} dep(s) unused"
   write_report "knip" "warn" "${UNUSED_FILES} arquivo(s), ${UNUSED_EXPORTS} export(s), ${UNUSED_DEPS} dep(s)" "$KNIP_DETAILS"
 else
-  step_pass "Sem código morto detectado"
-  write_report "knip" "pass" "Sem código morto detectado" "[]"
+  step_pass "No dead code detected"
+  write_report "knip" "pass" "No dead code detected" "[]"
 fi
 
 # ============================================================
@@ -378,9 +378,9 @@ for k in ['statements','branches','functions','lines']:
 rm -f "${REPORTS_DIR}/jest_raw.json"
 
 # ============================================================
-# [8/8] SonarQube — Dispara análise via API REST
+# [8/8] SonarQube — Triggers analysis via REST API
 # ============================================================
-echo -e "\n${CYAN}[8/${TOTAL_STEPS}] SonarQube — Disparando análise...${NC}"
+echo -e "\n${CYAN}[8/${TOTAL_STEPS}] SonarQube — Triggering analysis...${NC}"
 
 SONAR_HOST="${SONAR_HOST_URL:-http://sonarqube:9000}"
 SONAR_KEY="${SONAR_PROJECT_KEY:-${PROJECT_NAME}}"
@@ -389,7 +389,7 @@ SQ_PASS="${SONAR_ADMIN_PASSWORD:-admin}"
 SQ_PUBLIC="${SONAR_PUBLIC_URL:-${SONAR_HOST}}"
 
 if curl -s "${SONAR_HOST}/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; then
-  # Buscar métricas da última análise existente no SonarQube
+  # Fetch metrics from the last existing analysis in SonarQube
   SQ_MEASURES=$(curl -s -u "${SQ_USER}:${SQ_PASS}" \
     "${SONAR_HOST}/api/measures/component?component=${SONAR_KEY}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,sqale_rating,reliability_rating,security_rating,alert_status" \
     2>/dev/null || echo "{}")
@@ -411,7 +411,7 @@ measures_raw = json.loads('''${SQ_MEASURES}''')
 issues_raw = json.loads('''${SQ_ISSUES}''')
 qg_raw = json.loads('''${QG_RESPONSE}''')
 
-# Métricas
+# Metrics
 metrics = {}
 for m in measures_raw.get('component', {}).get('measures', []):
   metrics[m['metric']] = m.get('value', '0')
@@ -451,19 +451,19 @@ print(json.dumps(result))
     step_fail "SonarQube Quality Gate: FAILED"
     write_report "sonarqube" "fail" "Quality Gate: FAILED" "$SQ_DETAILS"
   else
-    step_warn "SonarQube: sem análise prévia (execute sonar-scanner separadamente)"
-    write_report "sonarqube" "warn" "Sem análise prévia — execute sonar-scanner separadamente" "$SQ_DETAILS"
+    step_warn "SonarQube: no prior analysis (run sonar-scanner separately)"
+    write_report "sonarqube" "warn" "No prior analysis — run sonar-scanner separately" "$SQ_DETAILS"
   fi
   echo -e "${CYAN}  Dashboard: ${SQ_PUBLIC}/dashboard?id=${SONAR_KEY}${NC}"
 else
-  step_warn "SonarQube não acessível em ${SONAR_HOST} — pulando"
-  write_report "sonarqube" "skip" "SonarQube não acessível" "[]"
+  step_warn "SonarQube not accessible at ${SONAR_HOST} — skipping"
+  write_report "sonarqube" "skip" "SonarQube not accessible" "[]"
 fi
 
 # ============================================================
-# [9/9] API Lint — Validação de Contrato OpenAPI (Spectral)
+# [9/9] API Lint — OpenAPI Contract Validation (Spectral)
 # ============================================================
-echo -e "\n${CYAN}[9/${TOTAL_STEPS}] API Lint — Validação de contrato OpenAPI...${NC}"
+echo -e "\n${CYAN}[9/${TOTAL_STEPS}] API Lint — OpenAPI contract validation...${NC}"
 if [ "${ENABLE_API_LINT:-false}" = "true" ]; then
   LINT_RESULT=$(/quality/scripts/swagger-lint.sh /project "${REPORTS_DIR}" "${CONFIGS_DIR}" 2>/dev/null || echo "NO_FILE")
 
@@ -487,20 +487,20 @@ if [ "${ENABLE_API_LINT:-false}" = "true" ]; then
     fi
   fi
 else
-  step_warn "API Lint desativado (ENABLE_API_LINT=false)"
-  write_report "api-lint" "skip" "Step desativado via ENABLE_API_LINT" "[]"
+  step_warn "API Lint disabled (ENABLE_API_LINT=false)"
+  write_report "api-lint" "skip" "Step disabled via ENABLE_API_LINT" "[]"
 fi
 
 # ============================================================
-# [10/10] Infra Scan — Segurança de Infraestrutura (Trivy)
+# [10/10] Infra Scan — Infrastructure Security (Trivy)
 # ============================================================
-echo -e "\n${CYAN}[10/${TOTAL_STEPS}] Infra Scan — Segurança de infraestrutura (Trivy)...${NC}"
+echo -e "\n${CYAN}[10/${TOTAL_STEPS}] Infra Scan — Infrastructure security (Trivy)...${NC}"
 if [ "${ENABLE_INFRA_SCAN:-false}" = "true" ]; then
   INFRA_RESULT=$(/quality/scripts/infra-scan.sh /project "${REPORTS_DIR}" "${CONFIGS_DIR}" 2>/dev/null || echo "NO_IAC_FILES")
 
   if [ "${INFRA_RESULT}" = "NO_IAC_FILES" ]; then
-    step_warn "Infra Scan: nenhum arquivo IaC encontrado — pulando"
-    write_report "infra-scan" "skip" "Nenhum arquivo IaC encontrado" "[]"
+    step_warn "Infra Scan: no IaC files found — skipping"
+    write_report "infra-scan" "skip" "No IaC files found" "[]"
   else
     INFRA_STATUS=$(echo "${INFRA_RESULT}" | cut -d'|' -f1)
     INFRA_SUMMARY=$(echo "${INFRA_RESULT}" | cut -d'|' -f2)
@@ -518,12 +518,12 @@ if [ "${ENABLE_INFRA_SCAN:-false}" = "true" ]; then
     fi
   fi
 else
-  step_warn "Infra Scan desativado (ENABLE_INFRA_SCAN=false)"
-  write_report "infra-scan" "skip" "Step desativado via ENABLE_INFRA_SCAN" "[]"
+  step_warn "Infra Scan disabled (ENABLE_INFRA_SCAN=false)"
+  write_report "infra-scan" "skip" "Step disabled via ENABLE_INFRA_SCAN" "[]"
 fi
 
 # ============================================================
-# RESULTADO FINAL — Gerar summary.json
+# FINAL RESULT — Generate summary.json
 # ============================================================
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -551,20 +551,20 @@ cat > "${REPORTS_DIR}/summary.json" <<EOJSON
 EOJSON
 
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  Projeto: ${PROJECT_NAME} | Tempo: ${DURATION}s${NC}"
+echo -e "${BLUE}  Project: ${PROJECT_NAME} | Time: ${DURATION}s${NC}"
 echo -e "${BLUE}  Reports: ${REPORTS_DIR}${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 if [ $ERRORS -gt 0 ]; then
-  echo -e "${RED}${BOLD}  QUALITY GATE FAILED — ${ERRORS} erro(s), ${WARNINGS} warning(s)${NC}"
+  echo -e "${RED}${BOLD}  QUALITY GATE FAILED — ${ERRORS} error(s), ${WARNINGS} warning(s)${NC}"
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
   exit 1
 elif [ $WARNINGS -gt 0 ]; then
-  echo -e "${YELLOW}${BOLD}  QUALITY GATE PASSED com ${WARNINGS} warning(s)${NC}"
+  echo -e "${YELLOW}${BOLD}  QUALITY GATE PASSED with ${WARNINGS} warning(s)${NC}"
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
   exit 0
 else
-  echo -e "${GREEN}${BOLD}  QUALITY GATE PASSED — Código limpo!${NC}"
+  echo -e "${GREEN}${BOLD}  QUALITY GATE PASSED — Clean code!${NC}"
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
   exit 0
 fi

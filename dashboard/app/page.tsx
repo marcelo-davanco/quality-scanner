@@ -36,10 +36,10 @@ interface ToolReport {
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
-  pass: { color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: <CheckCircle2 size={18} />, label: 'Passou' },
-  fail: { color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', icon: <XCircle size={18} />, label: 'Falhou' },
-  warn: { color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: <AlertTriangle size={18} />, label: 'Aviso' },
-  skip: { color: 'text-slate-500', bg: 'bg-slate-500/10 border-slate-500/20', icon: <SkipForward size={18} />, label: 'Pulado' },
+  pass: { color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: <CheckCircle2 size={18} />, label: 'Passed' },
+  fail: { color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', icon: <XCircle size={18} />, label: 'Failed' },
+  warn: { color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: <AlertTriangle size={18} />, label: 'Warning' },
+  skip: { color: 'text-slate-500', bg: 'bg-slate-500/10 border-slate-500/20', icon: <SkipForward size={18} />, label: 'Skipped' },
 };
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
@@ -99,10 +99,10 @@ function SonarQubeDetails({ details }: { details: any }) {
 
   return (
     <div className="space-y-4">
-      {/* Métricas */}
+      {/* Metrics */}
       {metrics && Object.keys(metrics).length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Métricas</h4>
+          <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Metrics</h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {Object.entries(metrics).map(([key, val]) => (
               <div key={key} className="bg-slate-800/50 rounded px-3 py-2">
@@ -117,7 +117,7 @@ function SonarQubeDetails({ details }: { details: any }) {
       {/* Quality Gate Conditions */}
       {conditions && conditions.length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Condições do Quality Gate</h4>
+          <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Quality Gate Conditions</h4>
           <div className="space-y-1">
             {conditions.map((c: any, i: number) => (
               <div key={i} className={`flex items-center gap-2 text-sm ${c.status === 'OK' ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -131,7 +131,7 @@ function SonarQubeDetails({ details }: { details: any }) {
         </div>
       )}
 
-      {/* Issues por tipo */}
+      {/* Issues by type */}
       {issuesByType && Object.keys(issuesByType).length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Issues ({totalIssues})</h4>
@@ -153,11 +153,11 @@ function SonarQubeDetails({ details }: { details: any }) {
         </div>
       )}
 
-      {/* Link para dashboard */}
+      {/* Dashboard link */}
       {dashboardUrl && (
         <a href={rewriteSonarUrl(dashboardUrl)} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors">
-          <ExternalLink size={14} /> Abrir Dashboard do SonarQube
+          <ExternalLink size={14} /> Open SonarQube Dashboard
         </a>
       )}
     </div>
@@ -170,17 +170,17 @@ function JestDetails({ details }: { details: any }) {
 
   return (
     <div className="space-y-4">
-      {/* Resumo */}
+      {/* Summary */}
       <div className="flex gap-4 text-sm">
-        <span className="text-emerald-400">{passed} passando</span>
-        {failed > 0 && <span className="text-red-400">{failed} falhando</span>}
+        <span className="text-emerald-400">{passed} passing</span>
+        {failed > 0 && <span className="text-red-400">{failed} failing</span>}
         <span className="text-slate-500">{total} total</span>
       </div>
 
-      {/* Cobertura */}
+      {/* Coverage */}
       {coverage && Object.keys(coverage).length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Cobertura</h4>
+          <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Coverage</h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {['statements', 'branches', 'functions', 'lines'].map(k => {
               const c = coverage[k];
@@ -200,9 +200,9 @@ function JestDetails({ details }: { details: any }) {
         </div>
       )}
 
-      {/* Testes falhando */}
+      {/* Failing tests */}
       {failures && failures.length > 0 && (
-        <CollapsibleSection title={`Testes falhando (${failures.length})`} defaultOpen={true}>
+        <CollapsibleSection title={`Failing tests (${failures.length})`} defaultOpen={true}>
           <div className="space-y-2">
             {failures.map((f: any, i: number) => (
               <div key={i} className="bg-red-900/20 rounded p-2">
@@ -214,9 +214,9 @@ function JestDetails({ details }: { details: any }) {
         </CollapsibleSection>
       )}
 
-      {/* Cobertura por arquivo */}
+      {/* Coverage by file */}
       {files && files.length > 0 && (
-        <CollapsibleSection title={`Cobertura por arquivo (${files.length})`} defaultOpen={false}>
+        <CollapsibleSection title={`Coverage by file (${files.length})`} defaultOpen={false}>
           <div className="space-y-1">
             {files.map((f: any, i: number) => (
               <div key={i} className="text-xs font-mono text-slate-400 flex gap-3">
@@ -234,7 +234,7 @@ function JestDetails({ details }: { details: any }) {
 }
 
 function EslintDetails({ details }: { details: any }) {
-  if (!Array.isArray(details) || details.length === 0) return <p className="text-xs text-slate-500">Sem detalhes</p>;
+  if (!Array.isArray(details) || details.length === 0) return <p className="text-xs text-slate-500">No details</p>;
 
   return (
     <div className="space-y-2">
@@ -257,7 +257,7 @@ function EslintDetails({ details }: { details: any }) {
 
 function GenericDetails({ details }: { details: any }) {
   if (!details) return null;
-  if (Array.isArray(details) && details.length === 0) return <p className="text-xs text-slate-500">Sem detalhes</p>;
+  if (Array.isArray(details) && details.length === 0) return <p className="text-xs text-slate-500">No details</p>;
 
   return (
     <div className="space-y-1 max-h-64 overflow-auto">
@@ -400,15 +400,15 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-slate-500">
         <PackageSearch size={48} />
-        <p className="text-lg">Nenhum scan encontrado</p>
-        <p className="text-sm">Execute <code className="bg-slate-800 px-2 py-1 rounded">./scan.sh ./seu-projeto</code> para gerar reports</p>
+        <p className="text-lg">No scans found</p>
+        <p className="text-sm">Run <code className="bg-slate-800 px-2 py-1 rounded">./scan.sh ./your-project</code> to generate reports</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex">
-      {/* Sidebar — Histórico */}
+      {/* Sidebar — History */}
       <aside className="w-72 border-r border-slate-800 bg-slate-900/50 overflow-y-auto flex-shrink-0">
         <div className="p-4 border-b border-slate-800">
           <h1 className="text-lg font-bold text-slate-200 flex items-center gap-2">
@@ -418,7 +418,7 @@ export default function Dashboard() {
         </div>
 
         <div className="p-2">
-          {/* Agrupar por data */}
+          {/* Group by date */}
           {Array.from(new Set(scans.map(s => s.date))).map(date => (
             <div key={date} className="mb-3">
               <div className="flex items-center gap-2 px-2 py-1 text-xs font-semibold text-slate-500 uppercase">
@@ -470,8 +470,8 @@ export default function Dashboard() {
               <div className="flex items-center gap-4 text-sm text-slate-500">
                 <span className="flex items-center gap-1"><Calendar size={14} /> {selectedScan.date}</span>
                 <span className="flex items-center gap-1"><Clock size={14} /> {formatDuration(selectedScan.duration)}</span>
-                {selectedScan.errors > 0 && <span className="text-red-400">{selectedScan.errors} erro(s)</span>}
-                {selectedScan.warnings > 0 && <span className="text-amber-400">{selectedScan.warnings} aviso(s)</span>}
+                {selectedScan.errors > 0 && <span className="text-red-400">{selectedScan.errors} error(s)</span>}
+                {selectedScan.warnings > 0 && <span className="text-amber-400">{selectedScan.warnings} warning(s)</span>}
               </div>
             </div>
 
@@ -484,10 +484,10 @@ export default function Dashboard() {
                   if (r && r.status) counts[r.status as keyof typeof counts] = (counts[r.status as keyof typeof counts] || 0) + 1;
                 });
                 return [
-                  { label: 'Passou', count: counts.pass, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                  { label: 'Falhou', count: counts.fail, color: 'text-red-400', bg: 'bg-red-500/10' },
-                  { label: 'Avisos', count: counts.warn, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-                  { label: 'Pulados', count: counts.skip, color: 'text-slate-500', bg: 'bg-slate-500/10' },
+                  { label: 'Passed', count: counts.pass, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                  { label: 'Failed', count: counts.fail, color: 'text-red-400', bg: 'bg-red-500/10' },
+                  { label: 'Warnings', count: counts.warn, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+                  { label: 'Skipped', count: counts.skip, color: 'text-slate-500', bg: 'bg-slate-500/10' },
                 ].map(({ label, count, color, bg }) => (
                   <div key={label} className={`${bg} rounded-lg p-3 text-center border border-slate-700/30`}>
                     <div className={`text-2xl font-bold ${color}`}>{count}</div>

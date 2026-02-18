@@ -1,18 +1,18 @@
 #!/bin/bash
 set -e
 
-# Cores para output
+# Output colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  SonarQube Analysis - NestJS Project   ${NC}"
 echo -e "${BLUE}========================================${NC}"
 
-# Carregar variáveis de ambiente
+# Load environment variables
 if [ -f .env ]; then
   export $(grep -v '^#' .env | xargs)
 fi
@@ -20,58 +20,58 @@ fi
 SONAR_HOST_URL="${SONAR_HOST_URL:-http://localhost:9000}"
 SONAR_PROJECT_KEY="${SONAR_PROJECT_KEY:-nestjs-project}"
 
-# Verificar se o SonarQube está rodando
-echo -e "\n${YELLOW}[1/4] Verificando se o SonarQube está rodando...${NC}"
+# Check if SonarQube is running
+echo -e "\n${YELLOW}[1/4] Checking if SonarQube is running...${NC}"
 MAX_RETRIES=30
 RETRY_COUNT=0
 until curl -s "${SONAR_HOST_URL}/api/system/status" | grep -q '"status":"UP"'; do
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-    echo -e "${RED}✗ SonarQube não está respondendo. Execute: docker compose up -d${NC}"
+    echo -e "${RED}✗ SonarQube is not responding. Run: docker compose up -d${NC}"
     exit 1
   fi
-  echo -e "  Aguardando SonarQube iniciar... (${RETRY_COUNT}/${MAX_RETRIES})"
+  echo -e "  Waiting for SonarQube to start... (${RETRY_COUNT}/${MAX_RETRIES})"
   sleep 5
 done
-echo -e "${GREEN}✓ SonarQube está rodando!${NC}"
+echo -e "${GREEN}✓ SonarQube is running!${NC}"
 
-# Instalar dependências se necessário
-echo -e "\n${YELLOW}[2/4] Verificando dependências...${NC}"
+# Install dependencies if needed
+echo -e "\n${YELLOW}[2/4] Checking dependencies...${NC}"
 if [ ! -d "node_modules" ]; then
-  echo -e "  Instalando dependências..."
+  echo -e "  Installing dependencies..."
   npm install
 fi
 
-# Verificar se sonar-scanner está instalado
+# Check if sonar-scanner is installed
 if ! command -v sonar-scanner &> /dev/null && ! npx sonar-scanner --version &> /dev/null 2>&1; then
-  echo -e "  Instalando sonar-scanner..."
+  echo -e "  Installing sonar-scanner..."
   npm install -D sonar-scanner
 fi
-echo -e "${GREEN}✓ Dependências OK!${NC}"
+echo -e "${GREEN}✓ Dependencies OK!${NC}"
 
-# Rodar testes com cobertura
-echo -e "\n${YELLOW}[3/4] Executando testes com cobertura...${NC}"
+# Run tests with coverage
+echo -e "\n${YELLOW}[3/4] Running tests with coverage...${NC}"
 npm run test:cov || {
-  echo -e "${RED}✗ Testes falharam! Verifique os erros acima.${NC}"
-  echo -e "${YELLOW}  Continuando análise mesmo com falhas nos testes...${NC}"
+  echo -e "${RED}✗ Tests failed! Check the errors above.${NC}"
+  echo -e "${YELLOW}  Continuing analysis despite test failures...${NC}"
 }
-echo -e "${GREEN}✓ Testes executados!${NC}"
+echo -e "${GREEN}✓ Tests executed!${NC}"
 
-# Rodar análise do SonarQube
-echo -e "\n${YELLOW}[4/4] Executando análise do SonarQube...${NC}"
+# Run SonarQube analysis
+echo -e "\n${YELLOW}[4/4] Running SonarQube analysis...${NC}"
 
 SONAR_ARGS="-Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.projectKey=${SONAR_PROJECT_KEY}"
 
 if [ -n "${SONAR_TOKEN}" ]; then
   SONAR_ARGS="${SONAR_ARGS} -Dsonar.token=${SONAR_TOKEN}"
 else
-  echo -e "${YELLOW}  ⚠ SONAR_TOKEN não definido. Usando login padrão (admin/admin).${NC}"
+  echo -e "${YELLOW}  ⚠ SONAR_TOKEN not set. Using default login (admin/admin).${NC}"
   SONAR_ARGS="${SONAR_ARGS} -Dsonar.login=admin -Dsonar.password=admin"
 fi
 
 npx sonar-scanner ${SONAR_ARGS}
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}  ✓ Análise concluída com sucesso!      ${NC}"
+echo -e "${GREEN}  ✓ Analysis completed successfully!    ${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "\n${BLUE}Acesse o dashboard: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}${NC}\n"
+echo -e "\n${BLUE}Dashboard: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}${NC}\n"

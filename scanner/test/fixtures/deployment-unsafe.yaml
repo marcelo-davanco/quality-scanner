@@ -1,5 +1,5 @@
-# Kubernetes Deployment inseguro — deve gerar múltiplas findings no Trivy
-# Usado como fixture de teste para o Infra Scan
+# Unsafe Kubernetes Deployment — should generate multiple findings in Trivy
+# Used as a test fixture for the Infra Scan step
 
 apiVersion: apps/v1
 kind: Deployment
@@ -16,28 +16,28 @@ spec:
       labels:
         app: app-unsafe
     spec:
-      # PROBLEMA: hostNetwork habilitado (KSV006)
+      # ISSUE: hostNetwork enabled (KSV006)
       hostNetwork: true
-      # PROBLEMA: hostPID habilitado (KSV009)
+      # ISSUE: hostPID enabled (KSV009)
       hostPID: true
-      # PROBLEMA: hostIPC habilitado (KSV010)
+      # ISSUE: hostIPC enabled (KSV010)
       hostIPC: true
-      # PROBLEMA: Sem securityContext no pod (KSV021)
-      # PROBLEMA: Sem runAsNonRoot (KSV020)
+      # ISSUE: No securityContext on pod (KSV021)
+      # ISSUE: No runAsNonRoot (KSV020)
       containers:
         - name: app
           image: node:latest
           ports:
             - containerPort: 3000
-          # PROBLEMA: Container privilegiado (KSV014 — CRITICAL)
+          # ISSUE: Privileged container (KSV014 — CRITICAL)
           securityContext:
             privileged: true
             allowPrivilegeEscalation: true
-            # PROBLEMA: Sem readOnlyRootFilesystem (KSV012)
-            # PROBLEMA: Capabilities não dropadas (KSV003)
-          # PROBLEMA: Sem limites de CPU (KSV011)
-          # PROBLEMA: Sem limites de memória (KSV013)
-          # PROBLEMA: Sem probes
+            # ISSUE: No readOnlyRootFilesystem (KSV012)
+            # ISSUE: Capabilities not dropped (KSV003)
+          # ISSUE: No CPU limits (KSV011)
+          # ISSUE: No memory limits (KSV013)
+          # ISSUE: No probes
           env:
             - name: DB_PASSWORD
               value: "super_secret_123"

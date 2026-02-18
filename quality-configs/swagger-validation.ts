@@ -1,23 +1,23 @@
 /**
- * Script de validação de API Swagger/OpenAPI para NestJS
+ * Swagger/OpenAPI validation script for NestJS
  *
- * Uso:
- *   1. Adicione ao package.json: "validate:api": "ts-node scripts/swagger-validation.ts"
- *   2. Rode: npm run validate:api
+ * Usage:
+ *   1. Add to package.json: "validate:api": "ts-node scripts/swagger-validation.ts"
+ *   2. Run: npm run validate:api
  *
- * O que valida:
- *   - Todos os endpoints têm decorators @ApiOperation e @ApiResponse
- *   - DTOs têm @ApiProperty em todas as propriedades
- *   - O spec gerado é válido segundo OpenAPI 3.0
- *   - Não há endpoints sem documentação
+ * What it validates:
+ *   - All endpoints have @ApiOperation and @ApiResponse decorators
+ *   - DTOs have @ApiProperty on all properties
+ *   - The generated spec is valid according to OpenAPI 3.0
+ *   - No endpoints are missing documentation
  */
 
 // ============================================================
-// Exemplo de integração no quality-gate ou CI
+// Example integration in quality-gate or CI
 // ============================================================
 
 /*
-  // No main.ts ou em um script separado, gere o spec:
+  // In main.ts or a separate script, generate the spec:
   import { NestFactory } from '@nestjs/core';
   import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
   import { AppModule } from './app.module';
@@ -33,7 +33,7 @@
 
     const document = SwaggerModule.createDocument(app, config);
 
-    // Salvar spec para validação
+    // Save spec for validation
     fs.writeFileSync('openapi-spec.json', JSON.stringify(document, null, 2));
 
     // Validar
@@ -48,42 +48,42 @@
 
     for (const [path, methods] of Object.entries(paths)) {
       for (const [method, operation] of Object.entries(methods as Record<string, any>)) {
-        // Verificar se tem summary/description
+        // Check if summary/description is present
         if (!operation.summary && !operation.description) {
-          errors.push(`${method.toUpperCase()} ${path}: falta @ApiOperation (summary/description)`);
+          errors.push(`${method.toUpperCase()} ${path}: missing @ApiOperation (summary/description)`);
         }
 
-        // Verificar se tem responses documentadas
+        // Check if responses are documented
         if (!operation.responses || Object.keys(operation.responses).length === 0) {
-          errors.push(`${method.toUpperCase()} ${path}: falta @ApiResponse`);
+          errors.push(`${method.toUpperCase()} ${path}: missing @ApiResponse`);
         }
 
-        // Verificar se tem response 200/201 documentada
+        // Check if a 200/201 response is documented
         const hasSuccessResponse = Object.keys(operation.responses || {}).some(
           (code) => code.startsWith('2'),
         );
         if (!hasSuccessResponse) {
-          errors.push(`${method.toUpperCase()} ${path}: falta response de sucesso (2xx)`);
+          errors.push(`${method.toUpperCase()} ${path}: missing success response (2xx)`);
         }
       }
     }
 
     if (errors.length > 0) {
-      console.error('\\n❌ Swagger Validation Errors:\\n');
+      console.error('\n❌ Swagger Validation Errors:\n');
       errors.forEach((e) => console.error(`  - ${e}`));
-      console.error(`\\nTotal: ${errors.length} erro(s)\\n`);
+      console.error(`\nTotal: ${errors.length} error(s)\n`);
       process.exit(1);
     }
 
-    console.log('✓ Swagger spec válido — todos os endpoints documentados');
+    console.log('✓ Valid Swagger spec — all endpoints documented');
   }
 
   generateSpec().catch(console.error);
 */
 
 // ============================================================
-// Validação offline do spec (sem subir a aplicação)
-// Requer: npm install -D @apidevtools/swagger-parser
+// Offline spec validation (without starting the application)
+// Requires: npm install -D @apidevtools/swagger-parser
 // ============================================================
 
 /*
@@ -92,9 +92,9 @@
   async function validateOffline(): Promise<void> {
     try {
       const api = await SwaggerParser.validate('openapi-spec.json');
-      console.log(`✓ API válida: ${api.info.title} v${api.info.version}`);
+      console.log(`✓ Valid API: ${api.info.title} v${api.info.version}`);
     } catch (err) {
-      console.error('❌ Spec inválido:', err.message);
+      console.error('❌ Invalid spec:', err.message);
       process.exit(1);
     }
   }

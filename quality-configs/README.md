@@ -1,20 +1,20 @@
-# Quality Gate Local — Guia de Setup
+# Local Quality Gate — Setup Guide
 
-Setup completo para pegar apontamentos **antes do push**, eliminando retrabalho com bots do GitHub (Copilot, Cursor).
+Complete setup to catch issues **before pushing**, eliminating rework from GitHub bots (Copilot, Cursor).
 
-## O que cada ferramenta pega
+## What each tool catches
 
-| Ferramenta | O que detecta | Quando roda |
-|------------|--------------|-------------|
-| **TypeScript (`tsc`)** | Erros de tipo, imports quebrados | Pre-push |
-| **ESLint + sonarjs** | Code smells, complexidade, `any`, vars não usadas, segurança | Pre-commit (staged) + Pre-push |
-| **Prettier** | Formatação inconsistente | Pre-commit (staged) |
-| **Jest** | Testes falhando, cobertura abaixo do threshold | Pre-push |
-| **SonarQube** | Bugs, vulnerabilidades, duplicação, cobertura detalhada | Pre-push (se container UP) |
+| Tool | What it detects | When it runs |
+|------|----------------|--------------|
+| **TypeScript (`tsc`)** | Type errors, broken imports | Pre-push |
+| **ESLint + sonarjs** | Code smells, complexity, `any`, unused vars, security | Pre-commit (staged) + Pre-push |
+| **Prettier** | Inconsistent formatting | Pre-commit (staged) |
+| **Jest** | Failing tests, coverage below threshold | Pre-push |
+| **SonarQube** | Bugs, vulnerabilities, duplication, detailed coverage | Pre-push (if container is UP) |
 
-## Setup no projeto real
+## Setup in your project
 
-### 1. Instalar dependências
+### 1. Install dependencies
 
 ```bash
 npm install -D \
@@ -30,36 +30,36 @@ npm install -D \
   lint-staged
 ```
 
-### 2. Copiar arquivos de config
+### 2. Copy config files
 
 ```bash
-# Da pasta quality-configs/ para a raiz do projeto:
-cp .eslintrc.js        /caminho/do/projeto/
-cp .prettierrc         /caminho/do/projeto/
-cp .prettierignore     /caminho/do/projeto/
-cp .lintstagedrc.json  /caminho/do/projeto/
-cp sonar-project.properties /caminho/do/projeto/
+# From the quality-configs/ folder to your project root:
+cp .eslintrc.js        /path/to/project/
+cp .prettierrc         /path/to/project/
+cp .prettierignore     /path/to/project/
+cp .lintstagedrc.json  /path/to/project/
+cp sonar-project.properties /path/to/project/
 ```
 
-### 3. Configurar Husky (git hooks)
+### 3. Configure Husky (git hooks)
 
 ```bash
-cd /caminho/do/projeto
+cd /path/to/project
 
-# Inicializar husky
+# Initialize husky
 npx husky init
 
-# Pre-commit: formata e lint nos arquivos staged
+# Pre-commit: format and lint staged files
 cp quality-configs/husky-pre-commit .husky/pre-commit
 
-# Pre-push: quality gate completo
+# Pre-push: full quality gate
 cp quality-configs/husky-pre-push .husky/pre-push
 cp quality-gate.sh ./
 
 chmod +x .husky/pre-commit .husky/pre-push quality-gate.sh
 ```
 
-### 4. Adicionar scripts ao package.json
+### 4. Add scripts to package.json
 
 ```json
 {
@@ -73,73 +73,73 @@ chmod +x .husky/pre-commit .husky/pre-push quality-gate.sh
 }
 ```
 
-## Fluxo de trabalho
+## Workflow
 
-```
+```text
 git add .
 git commit -m "feat: ..."
   └─ pre-commit hook
-     ├─ prettier --write (auto-formata staged files)
-     └─ eslint --fix (auto-corrige o que pode)
+     ├─ prettier --write (auto-formats staged files)
+     └─ eslint --fix (auto-fixes what it can)
 
 git push
   └─ pre-push hook → quality-gate.sh
-     ├─ [1/5] tsc --noEmit (compilação)
-     ├─ [2/5] eslint (regras sonarjs + security)
-     ├─ [3/5] prettier --check (formatação)
-     ├─ [4/5] jest --coverage (testes + cobertura)
-     └─ [5/5] sonarqube (se container UP)
+     ├─ [1/5] tsc --noEmit (compilation)
+     ├─ [2/5] eslint (sonarjs + security rules)
+     ├─ [3/5] prettier --check (formatting)
+     ├─ [4/5] jest --coverage (tests + coverage)
+     └─ [5/5] sonarqube (if container is UP)
 ```
 
-Se qualquer step falhar, o **push é bloqueado** até corrigir.
+If any step fails, the **push is blocked** until fixed.
 
-## Rodar manualmente
+## Run manually
 
 ```bash
-# Quality gate completo
+# Full quality gate
 ./quality-gate.sh
 
-# Só lint
+# Lint only
 npm run lint
 
 # Lint + auto-fix
 npm run lint:fix
 
-# Só formatação
+# Check formatting only
 npm run format:check
 
-# Formatar tudo
+# Format everything
 npm run format
 ```
 
-## Regras ESLint alinhadas com SonarQube
+## ESLint rules aligned with SonarQube
 
-O `.eslintrc.js` usa o plugin `eslint-plugin-sonarjs` que replica as mesmas regras do SonarQube:
+The `.eslintrc.js` uses `eslint-plugin-sonarjs` which replicates the same rules as SonarQube:
 
-- **Complexidade cognitiva** — max 15 (mesma do Sonar)
-- **Strings duplicadas** — max 3 ocorrências
-- **Funções idênticas** — detecta copy/paste
-- **`any` explícito** — warning (Copilot bot sempre aponta)
-- **Return type explícito** — warning (Copilot bot sempre aponta)
-- **Promises não tratadas** — error
-- **Imports organizados** — auto-fix com grupos
-- **Segurança** — regex unsafe, eval, timing attacks
+- **Cognitive complexity** — max 15 (same as Sonar)
+- **Duplicate strings** — max 3 occurrences
+- **Identical functions** — detects copy/paste
+- **Explicit `any`** — warning (commonly flagged by Copilot bot)
+- **Explicit return type** — warning (commonly flagged by Copilot bot)
+- **Unhandled promises** — error
+- **Organized imports** — auto-fix with groups
+- **Security** — unsafe regex, eval, timing attacks
 
-### Regras relaxadas em testes
+### Relaxed rules in tests
 
-Arquivos `*.spec.ts` e `*.test.ts` têm regras mais permissivas (any permitido, sem limite de complexidade, strings duplicadas OK).
+Files matching `*.spec.ts` and `*.test.ts` have more permissive rules (any allowed, no complexity limit, duplicate strings OK).
 
-## Arquivos nesta pasta
+## Files in this folder
 
-```
+```text
 quality-configs/
-├── .eslintrc.js          # ESLint com sonarjs + security + typescript
-├── .prettierrc           # Formatação padrão
-├── .prettierignore       # Arquivos ignorados pelo Prettier
-├── .lintstagedrc.json    # Config do lint-staged (pre-commit)
-├── husky-pre-commit      # Hook: formata + lint nos staged files
-├── husky-pre-push        # Hook: quality gate completo
-├── sonar-project.properties  # Config SonarQube melhorada
-├── devDependencies.json  # Pacotes necessários
+├── .eslintrc.js          # ESLint with sonarjs + security + typescript
+├── .prettierrc           # Standard formatting config
+├── .prettierignore       # Files ignored by Prettier
+├── .lintstagedrc.json    # lint-staged config (pre-commit)
+├── husky-pre-commit      # Hook: format + lint staged files
+├── husky-pre-push        # Hook: full quality gate
+├── sonar-project.properties  # Improved SonarQube config
+├── devDependencies.json  # Required packages
 └── README.md
 ```

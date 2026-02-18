@@ -1,47 +1,47 @@
-# Scanner Configs — Guia de Configuração
+# Scanner Configs — Configuration Guide
 
-Este diretório contém todas as configurações centralizadas do Quality Scanner, embutidas no container Docker.
+This directory contains all centralized configurations for the Quality Scanner, bundled inside the Docker container.
 
-## Arquivos
+## Files
 
-| Arquivo | Propósito |
-| ------- | --------- |
-| `.eslintrc.js` | Regras de qualidade ESLint (TypeScript) |
-| `.prettierrc` | Formatação de código |
-| `.gitleaks.toml` | Detecção de secrets |
-| `.spectral.yml` | Validação de contratos OpenAPI/Swagger |
-| `trivy-policy.yaml` | Políticas de segurança de infraestrutura (Trivy) |
-| `sonar-project.properties` | Configuração padrão do SonarQube |
+| File | Purpose |
+|------|---------|
+| `.eslintrc.js` | ESLint code quality rules (TypeScript) |
+| `.prettierrc` | Code formatting config |
+| `.gitleaks.toml` | Secret detection rules |
+| `.spectral.yml` | OpenAPI/Swagger contract validation rules |
+| `trivy-policy.yaml` | Infrastructure security policies (Trivy) |
+| `sonar-project.properties` | Default SonarQube scanner configuration |
 
 ---
 
-## API Lint — Validação de Contratos OpenAPI (Spectral)
+## API Lint — OpenAPI Contract Validation (Spectral)
 
-### O que é
+### What it is
 
-O **Spectral** é uma ferramenta de lint para arquivos OpenAPI/Swagger. Ele valida que a documentação da API segue padrões REST definidos pela organização.
+**Spectral** is a linting tool for OpenAPI/Swagger files. It validates that API documentation follows the REST standards defined for the project.
 
-### Ativação
+### Activation
 
 ```bash
-# Via variável de ambiente
-ENABLE_API_LINT=true ./scan.sh /caminho/do/projeto
+# Via environment variable
+ENABLE_API_LINT=true ./scan.sh /path/to/project
 
 # Via docker-compose
 ENABLE_API_LINT=true docker compose --profile scan up scanner
 ```
 
-### Variáveis de Ambiente
+### Environment Variables
 
-| Variável | Default | Descrição |
-| -------- | ------- | --------- |
-| `ENABLE_API_LINT` | `false` | Ativa/desativa o step de API Lint |
-| `API_LINT_SEVERITY` | `warn` | Nível de bloqueio: `warn` (apenas reporta) ou `error` (bloqueia pipeline) |
-| `OPENAPI_FILE_PATH` | *(auto-detect)* | Caminho manual para o arquivo OpenAPI relativo ao projeto |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENABLE_API_LINT` | `false` | Enable/disable the API Lint step |
+| `API_LINT_SEVERITY` | `warn` | Blocking level: `warn` (report only) or `error` (block pipeline) |
+| `OPENAPI_FILE_PATH` | *(auto-detect)* | Manual path to the OpenAPI file, relative to the project root |
 
-### Detecção Automática
+### Auto-Detection
 
-Quando `OPENAPI_FILE_PATH` não é definido, o scanner procura automaticamente nos seguintes locais (em ordem de prioridade):
+When `OPENAPI_FILE_PATH` is not set, the scanner automatically searches in the following locations (in priority order):
 
 1. `swagger.json` / `swagger.yaml` / `swagger.yml`
 2. `openapi.json` / `openapi.yaml` / `openapi.yml`
@@ -49,61 +49,61 @@ Quando `OPENAPI_FILE_PATH` não é definido, o scanner procura automaticamente n
 4. `docs/swagger.json` / `docs/openapi.json`
 5. `api/swagger.json` / `api/openapi.json`
 6. `dist/swagger.json` / `dist/openapi.json`
-7. Busca recursiva (até 3 níveis, ignorando `node_modules`)
+7. Recursive search (up to 3 levels deep, ignoring `node_modules`)
 
-### Customização do Ruleset (`.spectral.yml`)
+### Ruleset Customization (`.spectral.yml`)
 
-O arquivo `.spectral.yml` estende o ruleset padrão `spectral:oas` e adiciona regras customizadas.
+The `.spectral.yml` file extends the default `spectral:oas` ruleset and adds custom rules.
 
-#### Regras Customizadas Incluídas
+#### Included Custom Rules
 
-| Regra | Severidade | Descrição |
-| ----- | ---------- | --------- |
-| `operation-must-have-400-response` | warn | Toda operação deve mapear response 400 |
-| `paths-must-be-kebab-case` | warn | Paths devem usar `kebab-case` |
-| `properties-must-be-camel-case` | warn | Propriedades de schema devem usar `camelCase` |
-| `operation-must-have-tags` | warn | Toda operação deve ter pelo menos uma tag |
-| `operation-must-have-summary` | warn | Toda operação deve ter um summary |
-| `no-trailing-slash` | error | Paths não devem terminar com `/` |
-| `response-must-have-content` | warn | Responses 200/201 devem ter content definido |
+| Rule | Severity | Description |
+|------|----------|-------------|
+| `operation-must-have-400-response` | warn | Every operation must map a 400 response |
+| `paths-must-be-kebab-case` | warn | Paths must use `kebab-case` |
+| `properties-must-be-camel-case` | warn | Schema properties must use `camelCase` |
+| `operation-must-have-tags` | warn | Every operation must have at least one tag |
+| `operation-must-have-summary` | warn | Every operation must have a summary |
+| `no-trailing-slash` | error | Paths must not end with `/` |
+| `response-must-have-content` | warn | 200/201 responses must have content defined |
 
-#### Regras Padrão OAS (Override de Severidade)
+#### Default OAS Rules (Severity Override)
 
-| Regra | Severidade | Descrição |
-| ----- | ---------- | --------- |
-| `operation-operationId` | error | Toda operação deve ter `operationId` |
-| `operation-description` | error | Toda operação deve ter `description` |
-| `info-description` | error | Info deve ter description |
-| `info-contact` | warn | Info deve ter contact |
-| `oas3-api-servers` | warn | Deve definir servers |
+| Rule | Severity | Description |
+|------|----------|-------------|
+| `operation-operationId` | error | Every operation must have an `operationId` |
+| `operation-description` | error | Every operation must have a `description` |
+| `info-description` | error | Info must have a description |
+| `info-contact` | warn | Info should have contact info |
+| `oas3-api-servers` | warn | Must define servers |
 
-#### Como Adicionar Novas Regras
+#### How to Add New Rules
 
-Edite o arquivo `.spectral.yml` e adicione uma nova regra seguindo o padrão:
+Edit `.spectral.yml` and add a new rule following this pattern:
 
 ```yaml
 rules:
-  minha-regra-customizada:
-    description: "Descrição da regra"
+  my-custom-rule:
+    description: "Rule description"
     severity: warn  # error | warn | info | hint
-    given: "$.paths[*][*]"  # JSONPath para o alvo
+    given: "$.paths[*][*]"  # JSONPath to the target
     then:
-      field: "campo"
+      field: "fieldName"
       function: truthy  # truthy | falsy | pattern | schema | etc.
 ```
 
-#### Referência de Funções Spectral
+#### Spectral Function Reference
 
-- **`truthy`** — campo deve existir e ser truthy
-- **`falsy`** — campo deve ser falsy
-- **`pattern`** — campo deve corresponder a um regex (`functionOptions.match` ou `functionOptions.notMatch`)
-- **`schema`** — campo deve corresponder a um JSON Schema
-- **`enumeration`** — campo deve ser um dos valores listados
-- **`length`** — campo deve ter comprimento dentro do range
+- **`truthy`** — field must exist and be truthy
+- **`falsy`** — field must be falsy
+- **`pattern`** — field must match a regex (`functionOptions.match` or `functionOptions.notMatch`)
+- **`schema`** — field must conform to a JSON Schema
+- **`enumeration`** — field must be one of the listed values
+- **`length`** — field length must be within a range
 
-### Output JSON
+### JSON Output
 
-O step gera um relatório JSON com a seguinte estrutura:
+The step generates a JSON report with the following structure:
 
 ```json
 {
@@ -122,7 +122,7 @@ O step gera um relatório JSON com a seguinte estrutura:
       "count": 2,
       "occurrences": [
         {
-          "message": "Toda operação deve mapear uma resposta 400 (Bad Request).",
+          "message": "Every operation must map a 400 (Bad Request) response.",
           "path": "paths./users.get",
           "source": "swagger.json",
           "range": { "start": { "line": 10, "character": 6 }, "end": { "line": 10, "character": 20 } }
@@ -133,119 +133,119 @@ O step gera um relatório JSON com a seguinte estrutura:
 }
 ```
 
-### Testes
+### Tests
 
 ```bash
-# Executar testes do API Lint
+# Run API Lint tests
 bash scanner/test/test-api-lint.sh
 ```
 
-Os testes cobrem os seguintes cenários:
+Test scenarios covered:
 
-| Cenário | Resultado Esperado |
-| ------- | ------------------ |
-| API válida | 0 violações, step passa |
-| API inválida + severity=warn | Violações reportadas, pipeline continua |
-| API inválida + severity=error | Violações reportadas, pipeline bloqueia |
-| Sem arquivo OpenAPI | Step ignorado graciosamente |
-| Step desativado | Step não executa |
-| OPENAPI_FILE_PATH manual | Encontra arquivo no caminho especificado |
-| Validação do schema JSON | Output contém todos os campos obrigatórios |
+| Scenario | Expected Result |
+|----------|----------------|
+| Valid API | 0 violations, step passes |
+| Invalid API + severity=warn | Violations reported, pipeline continues |
+| Invalid API + severity=error | Violations reported, pipeline blocked |
+| No OpenAPI file | Step skipped gracefully |
+| Step disabled | Step does not run |
+| Manual OPENAPI_FILE_PATH | File found at specified path |
+| JSON schema validation | Output contains all required fields |
 
 ---
 
-## Infra Scan — Segurança de Infraestrutura (Trivy)
+## Infra Scan — Infrastructure Security (Trivy)
 
-### O que é
+### What it is
 
-O **Trivy** é um scanner de segurança open-source da Aqua Security. Ele detecta misconfigurations em arquivos de infraestrutura como código (IaC): Dockerfiles, docker-compose, Kubernetes manifests e Terraform.
+**Trivy** is an open-source security scanner by Aqua Security. It detects misconfigurations in Infrastructure as Code (IaC) files: Dockerfiles, docker-compose, Kubernetes manifests, and Terraform.
 
-### Ativação
+### Activation
 
 ```bash
-# Via variável de ambiente
-ENABLE_INFRA_SCAN=true ./scan.sh /caminho/do/projeto
+# Via environment variable
+ENABLE_INFRA_SCAN=true ./scan.sh /path/to/project
 
 # Via docker-compose
 ENABLE_INFRA_SCAN=true docker compose --profile scan up scanner
 ```
 
-### Variáveis de Ambiente
+### Environment Variables
 
-| Variável | Default | Descrição |
-| -------- | ------- | --------- |
-| `ENABLE_INFRA_SCAN` | `false` | Ativa/desativa o step de Infra Scan |
-| `INFRA_SCAN_SEVERITY` | `HIGH` | Nível mínimo para bloqueio: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` |
-| `SCAN_DOCKERFILE` | `true` | Ativa varredura de Dockerfiles |
-| `SCAN_K8S` | `true` | Ativa varredura de manifests Kubernetes |
-| `SCAN_COMPOSE` | `true` | Ativa varredura de docker-compose |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENABLE_INFRA_SCAN` | `false` | Enable/disable the Infra Scan step |
+| `INFRA_SCAN_SEVERITY` | `HIGH` | Minimum blocking severity: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` |
+| `SCAN_DOCKERFILE` | `true` | Enable Dockerfile scanning |
+| `SCAN_K8S` | `true` | Enable Kubernetes manifest scanning |
+| `SCAN_COMPOSE` | `true` | Enable docker-compose scanning |
 
-### Detecção Automática de Arquivos
+### Automatic File Detection
 
-O scanner detecta automaticamente arquivos IaC no projeto:
+The scanner automatically detects IaC files in the project:
 
 **Dockerfiles:**
 - `Dockerfile`, `Dockerfile.*`, `*.dockerfile`
-- Busca até 4 níveis de profundidade (ignora `node_modules`, `.git`)
+- Searches up to 4 levels deep (ignores `node_modules`, `.git`)
 
 **docker-compose:**
 - `docker-compose.yml`, `docker-compose.yaml`
 - `docker-compose.*.yml`, `compose.yml`, `compose.yaml`
 
 **Kubernetes:**
-- Diretórios: `k8s/`, `kubernetes/`, `manifests/`, `deploy/`, `deployments/`, `helm/`, `charts/`
-- Arquivos na raiz: `deployment.yaml`, `service.yaml`, `ingress.yaml`, `configmap.yaml`, etc.
+- Directories: `k8s/`, `kubernetes/`, `manifests/`, `deploy/`, `deployments/`, `helm/`, `charts/`
+- Root-level files: `deployment.yaml`, `service.yaml`, `ingress.yaml`, `configmap.yaml`, etc.
 
-### Regras de Segurança Cobertas
+### Security Rules Covered
 
 #### Dockerfile
 
-| ID | Severidade | Descrição |
-| -- | ---------- | --------- |
-| DS001 | HIGH | Imagem base usando tag `latest` |
-| DS002 | HIGH | Container rodando como root |
-| DS005 | LOW | Uso de `ADD` ao invés de `COPY` |
-| DS006 | LOW | Falta de `HEALTHCHECK` |
-| DS012 | LOW | `apt-get` sem `--no-install-recommends` |
-| DS013 | HIGH | Falta de instrução `USER` |
-| DS014 | MEDIUM | Uso de `sudo` |
-| DS026 | LOW | Exposição de porta privilegiada |
+| ID | Severity | Description |
+|----|----------|-------------|
+| DS001 | HIGH | Base image using `latest` tag |
+| DS002 | HIGH | Container running as root |
+| DS005 | LOW | Use of `ADD` instead of `COPY` |
+| DS006 | LOW | Missing `HEALTHCHECK` |
+| DS012 | LOW | `apt-get` without `--no-install-recommends` |
+| DS013 | HIGH | Missing `USER` instruction |
+| DS014 | MEDIUM | Use of `sudo` |
+| DS026 | LOW | Privileged port exposed |
 
 #### Kubernetes
 
-| ID | Severidade | Descrição |
-| -- | ---------- | --------- |
-| KSV001 | HIGH | Container rodando como root |
-| KSV003 | MEDIUM | Capabilities não dropadas |
-| KSV006 | HIGH | `hostNetwork` habilitado |
-| KSV009 | HIGH | `hostPID` habilitado |
-| KSV010 | HIGH | `hostIPC` habilitado |
-| KSV011 | MEDIUM | Limites de CPU não definidos |
-| KSV013 | MEDIUM | Limites de memória não definidos |
-| KSV014 | CRITICAL | Container privilegiado |
-| KSV020 | HIGH | Falta de `runAsNonRoot` |
-| KSV021 | HIGH | Falta de `securityContext` |
+| ID | Severity | Description |
+|----|----------|-------------|
+| KSV001 | HIGH | Container running as root |
+| KSV003 | MEDIUM | Capabilities not dropped |
+| KSV006 | HIGH | `hostNetwork` enabled |
+| KSV009 | HIGH | `hostPID` enabled |
+| KSV010 | HIGH | `hostIPC` enabled |
+| KSV011 | MEDIUM | CPU limits not defined |
+| KSV013 | MEDIUM | Memory limits not defined |
+| KSV014 | CRITICAL | Privileged container |
+| KSV020 | HIGH | Missing `runAsNonRoot` |
+| KSV021 | HIGH | Missing `securityContext` |
 
-### Customização de Políticas (`trivy-policy.yaml`)
+### Policy Customization (`trivy-policy.yaml`)
 
-O arquivo `trivy-policy.yaml` controla quais severidades e scanners são ativados. Para ajustar:
+The `trivy-policy.yaml` file controls which severities and scanners are active. To adjust:
 
 ```yaml
-# Exemplo: reportar apenas CRITICAL e HIGH
+# Example: report only CRITICAL and HIGH
 severity:
   - CRITICAL
   - HIGH
 
-# Exemplo: incluir apenas checks de Docker e Kubernetes
+# Example: include only Docker and Kubernetes checks
 misconfig:
   include:
     - docker
     - kubernetes
 ```
 
-### Output JSON
+### JSON Output
 
-O step gera um relatório JSON com a seguinte estrutura:
+The step generates a JSON report with the following structure:
 
 ```json
 {
@@ -287,17 +287,17 @@ O step gera um relatório JSON com a seguinte estrutura:
 }
 ```
 
-### Troubleshooting — Findings Comuns
+### Troubleshooting — Common Findings
 
 #### Dockerfile: "Image user should not be root" (DS002/DS013)
 
 ```dockerfile
-# PROBLEMA: Sem USER instruction
+# PROBLEM: No USER instruction
 FROM node:18
 COPY . /app
 CMD ["node", "app.js"]
 
-# SOLUÇÃO: Adicionar USER não-root
+# SOLUTION: Add a non-root USER
 FROM node:18
 COPY --chown=node:node . /app
 USER node
@@ -307,17 +307,17 @@ CMD ["node", "app.js"]
 #### Dockerfile: "Add instead of Copy" (DS005)
 
 ```dockerfile
-# PROBLEMA: ADD pode baixar URLs e extrair tars automaticamente
+# PROBLEM: ADD can download URLs and auto-extract tars
 ADD . /app
 
-# SOLUÇÃO: Usar COPY (mais explícito e seguro)
+# SOLUTION: Use COPY (more explicit and secure)
 COPY . /app
 ```
 
 #### Dockerfile: "No HEALTHCHECK" (DS006)
 
 ```dockerfile
-# SOLUÇÃO: Adicionar HEALTHCHECK
+# SOLUTION: Add a HEALTHCHECK
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
   CMD curl -f http://localhost:3000/health || exit 1
 ```
@@ -325,11 +325,11 @@ HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
 #### Kubernetes: "Container is privileged" (KSV014 — CRITICAL)
 
 ```yaml
-# PROBLEMA
+# PROBLEM
 securityContext:
   privileged: true
 
-# SOLUÇÃO
+# SOLUTION
 securityContext:
   privileged: false
   allowPrivilegeEscalation: false
@@ -343,7 +343,7 @@ securityContext:
 #### Kubernetes: "No resource limits" (KSV011/KSV013)
 
 ```yaml
-# SOLUÇÃO: Definir requests e limits
+# SOLUTION: Define requests and limits
 resources:
   requests:
     cpu: 100m
@@ -356,34 +356,34 @@ resources:
 #### Kubernetes: "hostNetwork/hostPID/hostIPC" (KSV006/KSV009/KSV010)
 
 ```yaml
-# PROBLEMA
+# PROBLEM
 spec:
   hostNetwork: true
   hostPID: true
 
-# SOLUÇÃO: Remover ou setar como false
+# SOLUTION: Remove or set to false
 spec:
   hostNetwork: false
   hostPID: false
   hostIPC: false
 ```
 
-### Testes
+### Tests
 
 ```bash
-# Executar testes do Infra Scan
+# Run Infra Scan tests
 bash scanner/test/test-infra-scan.sh
 ```
 
-Os testes cobrem os seguintes cenários:
+Test scenarios covered:
 
-| Cenário | Resultado Esperado |
-| ------- | ------------------ |
-| Dockerfile seguro | 0 findings bloqueantes, step passa |
-| Dockerfile inseguro | Findings reportadas, bloqueio conforme severity |
-| K8s sem securityContext | Finding CRITICAL/HIGH |
-| Compose com privileged | Findings HIGH |
-| Sem arquivos IaC | Step ignorado graciosamente |
-| Step desativado | Step não executa |
-| Severity threshold CRITICAL vs MEDIUM | Bloqueio proporcional ao threshold |
-| Validação do schema JSON | Output contém todos os campos obrigatórios |
+| Scenario | Expected Result |
+|----------|----------------|
+| Safe Dockerfile | 0 blocking findings, step passes |
+| Unsafe Dockerfile | Findings reported, blocked per severity |
+| K8s without securityContext | CRITICAL/HIGH finding |
+| Compose with privileged | HIGH findings |
+| No IaC files | Step skipped gracefully |
+| Step disabled | Step does not run |
+| Severity threshold CRITICAL vs MEDIUM | Blocking proportional to threshold |
+| JSON schema validation | Output contains all required fields |

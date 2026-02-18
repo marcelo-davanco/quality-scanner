@@ -1,13 +1,13 @@
 #!/bin/bash
 # ============================================================
-# Swagger/OpenAPI Lint — Step 9 do Quality Scanner
-# Usa Spectral para validar contratos OpenAPI/Swagger
+# Swagger/OpenAPI Lint — Quality Scanner Step 9
+# Uses Spectral to validate OpenAPI/Swagger contracts
 # ============================================================
 
 set -euo pipefail
 
 # ──────────────────────────────────────────────────────────
-# Cores (herdadas do entrypoint, mas definidas como fallback)
+# Colors (inherited from entrypoint, defined here as fallback)
 # ──────────────────────────────────────────────────────────
 RED="${RED:-\033[0;31m}"
 GREEN="${GREEN:-\033[0;32m}"
@@ -16,7 +16,7 @@ CYAN="${CYAN:-\033[0;36m}"
 NC="${NC:-\033[0m}"
 
 # ──────────────────────────────────────────────────────────
-# Parâmetros (recebidos via variáveis de ambiente)
+# Parameters (received via environment variables)
 # ──────────────────────────────────────────────────────────
 PROJECT_DIR="${1:-/project}"
 REPORTS_DIR="${2:-/reports}"
@@ -25,13 +25,13 @@ OPENAPI_FILE_PATH="${OPENAPI_FILE_PATH:-}"
 API_LINT_SEVERITY="${API_LINT_SEVERITY:-warn}"
 
 # ──────────────────────────────────────────────────────────
-# Detecção automática do arquivo OpenAPI
-# Procura em ordem de prioridade nos locais mais comuns
+# Auto-detection of the OpenAPI file
+# Searches in priority order across the most common locations
 # ──────────────────────────────────────────────────────────
 detect_openapi_file() {
   local project_dir="$1"
 
-  # Se o usuário especificou manualmente, usar esse
+  # If the user specified a path manually, use it
   if [ -n "${OPENAPI_FILE_PATH}" ]; then
     if [ -f "${project_dir}/${OPENAPI_FILE_PATH}" ]; then
       echo "${project_dir}/${OPENAPI_FILE_PATH}"
@@ -44,7 +44,7 @@ detect_openapi_file() {
     return 0
   fi
 
-  # Nomes de arquivo comuns para OpenAPI/Swagger
+  # Common file names for OpenAPI/Swagger
   local candidates=(
     "swagger.json"
     "swagger.yaml"
@@ -72,7 +72,7 @@ detect_openapi_file() {
     fi
   done
 
-  # Busca recursiva como último recurso (ignora node_modules e dist)
+  # Recursive search as last resort (ignores node_modules and dist)
   local found
   found=$(find "${project_dir}" \
     -maxdepth 3 \
@@ -94,21 +94,21 @@ detect_openapi_file() {
 }
 
 # ──────────────────────────────────────────────────────────
-# Execução do Spectral
+# Spectral execution
 # ──────────────────────────────────────────────────────────
 run_spectral_lint() {
   local openapi_file="$1"
   local ruleset="${CONFIGS_DIR}/.spectral.yml"
   local raw_output="${REPORTS_DIR}/spectral_raw.json"
 
-  # Executar Spectral com output JSON
+  # Run Spectral with JSON output
   spectral lint "${openapi_file}" \
     --ruleset "${ruleset}" \
     --format json \
     --output "${raw_output}" \
     2>/dev/null || true
 
-  # Se não gerou arquivo, criar vazio
+  # If no output file was generated, create an empty one
   if [ ! -f "${raw_output}" ]; then
     echo "[]" > "${raw_output}"
   fi
@@ -117,8 +117,8 @@ run_spectral_lint() {
 }
 
 # ──────────────────────────────────────────────────────────
-# Processamento dos resultados
-# Gera JSON padronizado para o dashboard
+# Result processing
+# Generates standardized JSON for the dashboard
 # ──────────────────────────────────────────────────────────
 process_results() {
   local raw_file="$1"
@@ -132,7 +132,7 @@ try:
 except:
     raw = []
 
-# Contadores por severidade
+# Counters by severity
 counts = {'error': 0, 'warn': 0, 'info': 0, 'hint': 0}
 severity_map = {0: 'error', 1: 'warn', 2: 'info', 3: 'hint'}
 
@@ -174,10 +174,10 @@ print(json.dumps(result))
 }
 
 # ──────────────────────────────────────────────────────────
-# Main
+# Main entry point
 # ──────────────────────────────────────────────────────────
 main() {
-  # Detectar arquivo OpenAPI
+  # Detect OpenAPI file
   local openapi_file
   openapi_file=$(detect_openapi_file "${PROJECT_DIR}")
 
@@ -186,20 +186,20 @@ main() {
     return 0
   fi
 
-  # Executar lint
+  # Run lint
   local raw_output
   raw_output=$(run_spectral_lint "${openapi_file}")
 
-  # Processar resultados
+  # Process results
   local result
   result=$(process_results "${raw_output}" "${openapi_file}")
 
-  # Extrair contadores
+  # Extract counters
   local errors warnings
   errors=$(echo "${result}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read())['counts']['error'])" 2>/dev/null || echo "0")
   warnings=$(echo "${result}" | python3 -c "import json,sys; d=json.loads(sys.stdin.read())['counts']; print(d['warn']+d['info']+d['hint'])" 2>/dev/null || echo "0")
 
-  # Determinar status baseado na severidade configurada
+  # Determine status based on configured severity
   local status="pass"
   local summary=""
 
@@ -209,18 +209,18 @@ main() {
     else
       status="warn"
     fi
-    summary="${errors} erro(s), ${warnings} warning(s)"
+    summary="${errors} error(s), ${warnings} warning(s)"
   elif [ "${warnings}" -gt 0 ]; then
     status="warn"
     summary="${warnings} warning(s)"
   else
-    summary="Contrato OpenAPI válido — sem violações"
+    summary="Valid OpenAPI contract — no violations"
   fi
 
-  # Output no formato: STATUS|SUMMARY|DETAILS_JSON
+  # Output format: STATUS|SUMMARY|DETAILS_JSON
   echo "${status}|${summary}|${result}"
 
-  # Limpar raw
+  # Clean up raw file
   rm -f "${REPORTS_DIR}/spectral_raw.json"
 }
 

@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+
+jobs:
+  lint-and-validate:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔍 Detect secrets with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐚 Validate shell scripts (shellcheck)
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './scanner'
+          severity: warning
+
+      - name: 📋 Lint YAML files
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: scanner/configs
+          config_data: |
+            extends: default
+            rules:
+              line-length:
+                max: 120
+              comments:
+                min-spaces-from-content: 1

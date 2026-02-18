@@ -1,14 +1,14 @@
 // Stryker — Mutation Testing
-// Verifica se os testes realmente detectam bugs, não só cobertura de linhas
-// Rodar: npx stryker run
+// Verifies that tests actually detect bugs, not just line coverage
+// Run: npx stryker run
 // Docs: https://stryker-mutator.io
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 module.exports = {
-  // Pacote de mutação para TypeScript
+  // Mutation package for TypeScript
   mutator: {
     plugins: ['@stryker-mutator/typescript-checker'],
   },
-  // Arquivos a mutar (código fonte, não testes)
+  // Files to mutate (source code, not tests)
   mutate: [
     'src/**/*.ts',
     '!src/**/*.spec.ts',
@@ -27,7 +27,7 @@ module.exports = {
   jest: {
     configFile: 'jest.config.js',
   },
-  // TypeScript checker — valida que mutações compilam
+  // TypeScript checker — validates that mutations compile
   checkers: ['typescript'],
   tsconfigFile: 'tsconfig.json',
   // Reporters
@@ -35,16 +35,16 @@ module.exports = {
   htmlReporter: {
     fileName: 'reports/mutation/mutation-report.html',
   },
-  // Thresholds — score mínimo de mutação
+  // Thresholds — minimum mutation score
   thresholds: {
     high: 80,
     low: 60,
-    break: 50, // falha se score < 50%
+    break: 50, // fail if score < 50%
   },
   // Performance
   concurrency: 4,
   timeoutMS: 30000,
-  // Cobertura incremental — só muta arquivos alterados
+  // Incremental coverage — only mutates changed files
   incremental: true,
   incrementalFile: '.stryker-tmp/incremental.json',
 };

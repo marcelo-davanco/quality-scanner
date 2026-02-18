@@ -1,32 +1,32 @@
 # Quality Scanner Dashboard
 
-Dashboard web para visualizar os resultados do Quality Scanner.
+Web dashboard for visualizing Quality Scanner results.
 
-## Configuração
+## Configuration
 
-Copie `.env.local` e ajuste conforme necessário:
+Copy `.env.local` and adjust as needed:
 
-| Variável | Descrição | Default |
-|---|---|---|
-| `REPORTS_PATH` | Caminho para o diretório de reports (relativo ou absoluto) | `../reports` |
-| `NEXT_PUBLIC_SONAR_URL` | URL pública do SonarQube (para links clicáveis) | `http://localhost:9000` |
-| `PORT` | Porta do dashboard | `3000` |
+| Variable | Description | Default |
+|----------|-------------|--------|
+| `REPORTS_PATH` | Path to the reports directory (relative or absolute) | `../reports` |
+| `NEXT_PUBLIC_SONAR_URL` | Public SonarQube URL (for clickable links) | `http://localhost:9000` |
+| `PORT` | Dashboard port | `3000` |
 
-## Executar
+## Running
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000) no navegador.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Funcionalidades
+## Features
 
-- **Histórico** — sidebar com scans agrupados por data
-- **Resumo** — cards com contagem de passed/failed/warnings/skipped
-- **Ferramentas** — cards com expand/collapse para detalhes de cada ferramenta
-- **SonarQube** — métricas, condições do quality gate e link direto para o dashboard do SQ
-- **Jest** — cobertura por categoria e por arquivo, testes falhando
-- **ESLint** — issues agrupados por regra com ocorrências
+- **History** — sidebar with scans grouped by date
+- **Summary** — cards with passed/failed/warnings/skipped counts
+- **Tools** — expandable/collapsible cards with per-tool details
+- **SonarQube** — metrics, quality gate conditions, and direct link to the SQ dashboard
+- **Jest** — coverage by category and by file, failing tests
+- **ESLint** — issues grouped by rule with occurrences
 

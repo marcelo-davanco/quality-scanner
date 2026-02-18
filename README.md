@@ -2,6 +2,10 @@
 
 > 🌐 **Translations:** [Português](./README.pt-BR.md) · [中文](./README.zh-CN.md) · [Español](./README.es.md) · [हिन्दी / اردو](./README.hi.md) · [Русский](./README.ru.md)
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/marcelo-davanco/quality-scanner)](https://github.com/marcelo-davanco/quality-scanner/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/marcelo-davanco/quality-scanner/ci.yml?label=CI)](https://github.com/marcelo-davanco/quality-scanner/actions/workflows/ci.yml)
+
 Docker-based code quality pipeline for NestJS/TypeScript projects, powered by SonarQube Community Edition. Runs 10 automated analysis steps — from secret detection to infrastructure security — and generates a JSON report for each scan.
 
 ## Prerequisites

@@ -388,18 +388,29 @@ SQ_USER="${SONAR_ADMIN_USER:-admin}"
 SQ_PASS="${SONAR_ADMIN_PASSWORD:-admin}"
 SQ_PUBLIC="${SONAR_PUBLIC_URL:-${SONAR_HOST}}"
 
+# Build branch/PR query params for SonarQube API calls (community-branch-plugin)
+SQ_BRANCH_PARAM=""
+SQ_QG_BRANCH_PARAM=""
+if [ -n "${SONAR_PR_KEY:-}" ]; then
+  SQ_BRANCH_PARAM="&pullRequest=${SONAR_PR_KEY}"
+  SQ_QG_BRANCH_PARAM="&pullRequest=${SONAR_PR_KEY}"
+elif [ -n "${SONAR_BRANCH_NAME:-}" ]; then
+  SQ_BRANCH_PARAM="&branch=${SONAR_BRANCH_NAME}"
+  SQ_QG_BRANCH_PARAM="&branch=${SONAR_BRANCH_NAME}"
+fi
+
 if curl -s "${SONAR_HOST}/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; then
   # Fetch metrics from the last existing analysis in SonarQube
   SQ_MEASURES=$(curl -s -u "${SQ_USER}:${SQ_PASS}" \
-    "${SONAR_HOST}/api/measures/component?component=${SONAR_KEY}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,sqale_rating,reliability_rating,security_rating,alert_status" \
+    "${SONAR_HOST}/api/measures/component?component=${SONAR_KEY}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,sqale_rating,reliability_rating,security_rating,alert_status${SQ_BRANCH_PARAM}" \
     2>/dev/null || echo "{}")
 
   SQ_ISSUES=$(curl -s -u "${SQ_USER}:${SQ_PASS}" \
-    "${SONAR_HOST}/api/issues/search?componentKeys=${SONAR_KEY}&ps=100&resolved=false" \
+    "${SONAR_HOST}/api/issues/search?componentKeys=${SONAR_KEY}&ps=100&resolved=false${SQ_BRANCH_PARAM}" \
     2>/dev/null || echo "{}")
 
   QG_RESPONSE=$(curl -s -u "${SQ_USER}:${SQ_PASS}" \
-    "${SONAR_HOST}/api/qualitygates/project_status?projectKey=${SONAR_KEY}" \
+    "${SONAR_HOST}/api/qualitygates/project_status?projectKey=${SONAR_KEY}${SQ_QG_BRANCH_PARAM}" \
     2>/dev/null || echo "{}")
 
   QG_STATUS=$(echo "$QG_RESPONSE" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('projectStatus',{}).get('status','NONE'))" 2>/dev/null || echo "NONE")

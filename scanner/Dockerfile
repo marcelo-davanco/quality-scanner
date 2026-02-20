@@ -1,4 +1,4 @@
-FROM node:18-slim
+FROM node:24-slim
 
 # Install system tools (Debian-based — glibc works correctly with Java NIO)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -41,8 +41,8 @@ RUN ARCH=$(uname -m) && \
 WORKDIR /quality
 COPY configs/ /quality/configs/
 
-# Install sonar-scanner CLI v5.0.1 (compatible with SQ 9.9, pure-Java)
-ENV SONAR_SCANNER_VERSION=5.0.1.3006
+# Install sonar-scanner CLI v6.2.1 (compatible with SonarQube 25.x)
+ENV SONAR_SCANNER_VERSION=6.2.1.4610
 RUN wget -q "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}.zip" -O /tmp/sonar-scanner.zip && \
   unzip -q /tmp/sonar-scanner.zip -d /opt && \
   mv /opt/sonar-scanner-${SONAR_SCANNER_VERSION} /opt/sonar-scanner && \

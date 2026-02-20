@@ -11,9 +11,6 @@ services:
       SONAR_JDBC_URL: jdbc:postgresql://db:5432/${SONAR_DB_NAME:-sonarqube}
       SONAR_JDBC_USERNAME: ${SONAR_DB_USER:-sonar}
       SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:-sonar}
-      # Java Agent — injected by the Dockerfile, exposed here for visibility/override
-      SONAR_WEB_JAVAADDITIONALOPTS: ${SONAR_WEB_JAVAADDITIONALOPTS:-}
-      SONAR_CE_JAVAADDITIONALOPTS: ${SONAR_CE_JAVAADDITIONALOPTS:-}
     ports:
       - "${SONAR_PORT:-9000}:9000"
     volumes:

@@ -427,7 +427,7 @@ if curl -s "${SONAR_HOST}/api/system/status" 2>/dev/null | grep -q '"status":"UP
     CE_TASK_URL=$(echo "$SCANNER_OUTPUT" | grep "api/ce/task" | grep -o 'http[^ ]*' | head -1)
     if [ -n "${CE_TASK_URL}" ]; then
       echo -e "${CYAN}  Waiting for Compute Engine to process analysis...${NC}"
-      for i in $(seq 1 30); do
+      for _ in $(seq 1 30); do
         CE_STATUS=$(curl -s -u "${SQ_USER}:${SQ_PASS}" "${CE_TASK_URL}" 2>/dev/null \
           | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('task',{}).get('status',''))" 2>/dev/null || echo "")
         if [ "${CE_STATUS}" = "SUCCESS" ] || [ "${CE_STATUS}" = "FAILED" ] || [ "${CE_STATUS}" = "CANCELLED" ]; then

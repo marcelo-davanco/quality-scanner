@@ -400,6 +400,46 @@ elif [ -n "${SONAR_BRANCH_NAME:-}" ]; then
 fi
 
 if curl -s "${SONAR_HOST}/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; then
+  # Run sonar-scanner if sonar-project-localhost.properties exists in the target project
+  SONAR_PROPS_FILE="/project/sonar-project-localhost.properties"
+  if [ -f "${SONAR_PROPS_FILE}" ]; then
+    echo -e "${CYAN}  Running sonar-scanner with sonar-project-localhost.properties...${NC}"
+
+    # Build branch/PR scanner args
+    SCANNER_BRANCH_ARGS=""
+    if [ -n "${SONAR_PR_KEY:-}" ]; then
+      SCANNER_BRANCH_ARGS="-Dsonar.pullrequest.key=${SONAR_PR_KEY} -Dsonar.pullrequest.branch=${SONAR_PR_BRANCH:-} -Dsonar.pullrequest.base=${SONAR_PR_BASE:-main}"
+    elif [ -n "${SONAR_BRANCH_NAME:-}" ]; then
+      SCANNER_BRANCH_ARGS="-Dsonar.branch.name=${SONAR_BRANCH_NAME}"
+    fi
+
+    SCANNER_OUTPUT=$(sonar-scanner \
+      -Dproject.settings="${SONAR_PROPS_FILE}" \
+      -Dsonar.host.url="${SONAR_HOST}" \
+      -Dsonar.token="${SONAR_TOKEN}" \
+      -Dsonar.projectKey="${SONAR_KEY}" \
+      ${SCANNER_BRANCH_ARGS} \
+      2>&1 || true)
+
+    echo "$SCANNER_OUTPUT" | grep -E "INFO.*ANALYSIS|INFO.*Branch|INFO.*Pull|WARN|ERROR" | tail -5
+
+    # Extract CE task ID and wait for processing to complete
+    CE_TASK_URL=$(echo "$SCANNER_OUTPUT" | grep "api/ce/task" | grep -o 'http[^ ]*' | head -1)
+    if [ -n "${CE_TASK_URL}" ]; then
+      echo -e "${CYAN}  Waiting for Compute Engine to process analysis...${NC}"
+      for i in $(seq 1 30); do
+        CE_STATUS=$(curl -s -u "${SQ_USER}:${SQ_PASS}" "${CE_TASK_URL}" 2>/dev/null \
+          | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('task',{}).get('status',''))" 2>/dev/null || echo "")
+        if [ "${CE_STATUS}" = "SUCCESS" ] || [ "${CE_STATUS}" = "FAILED" ] || [ "${CE_STATUS}" = "CANCELLED" ]; then
+          break
+        fi
+        sleep 3
+      done
+    fi
+  else
+    echo -e "${YELLOW}  sonar-project-localhost.properties not found in /project — skipping scanner${NC}"
+  fi
+
   # Fetch metrics from the last existing analysis in SonarQube
   SQ_MEASURES=$(curl -s -u "${SQ_USER}:${SQ_PASS}" \
     "${SONAR_HOST}/api/measures/component?component=${SONAR_KEY}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,sqale_rating,reliability_rating,security_rating,alert_status${SQ_BRANCH_PARAM}" \

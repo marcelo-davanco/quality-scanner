@@ -6,17 +6,23 @@
 [![Release](https://img.shields.io/github/v/release/marcelo-davanco/quality-scanner)](https://github.com/marcelo-davanco/quality-scanner/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/marcelo-davanco/quality-scanner/ci.yml?branch=develop&label=CI)](https://github.com/marcelo-davanco/quality-scanner/actions/workflows/ci.yml)
 
-Docker-based code quality pipeline for NestJS/TypeScript projects, powered by SonarQube Community Edition. Runs 10 automated analysis steps — from secret detection to infrastructure security — and generates a JSON report for each scan.
+Docker-based code quality pipeline for NestJS/TypeScript projects, powered by SonarQube Community Edition with the [Community Branch Plugin](./docs/community-branch-plugin.md). Runs 10 automated analysis steps — from secret detection to infrastructure security — and generates a JSON report for each scan.
 
 ## Prerequisites
 
 - **Docker** and **Docker Compose**
-- **Node.js** >= 18
-- **npm** or **yarn**
+- **Git**
 
 > ⚠️ On macOS/Linux, increase the virtual memory limit required by SonarQube:
+>
 > ```bash
 > sudo sysctl -w vm.max_map_count=524288
+> ```
+>
+> On **macOS with Colima**, start with at least 6 GB of memory:
+>
+> ```bash
+> colima start --memory 6 --cpu 4
 > ```
 
 ## Quick Start
@@ -27,7 +33,14 @@ Docker-based code quality pipeline for NestJS/TypeScript projects, powered by So
 cp .env.example .env
 ```
 
-Edit `.env` and fill in your values. The only required change for a first run is `SONAR_TOKEN` (see step 2).
+Edit `.env` and set at minimum:
+
+| Variable               | Description                                          |
+|------------------------|------------------------------------------------------|
+| `SONAR_ADMIN_PASSWORD` | SonarQube admin password (change after first login)  |
+| `SONAR_DB_PASSWORD`    | PostgreSQL password                                  |
+
+> **Note:** `SONAR_TOKEN` is generated automatically by `scan.sh` on every run. Leave it empty in `.env`.
 
 ### 2. Start SonarQube
 
@@ -35,58 +48,97 @@ Edit `.env` and fill in your values. The only required change for a first run is
 docker compose up -d
 ```
 
-Wait ~1 minute for SonarQube to start, then open **http://localhost:9000**.
+Wait ~1–2 minutes for SonarQube to initialize, then open **[http://localhost:9000](http://localhost:9000)**.
 
 - **Default login:** `admin` / `admin`
-- You will be prompted to change the password on first login.
+- Change the password on first login and update `SONAR_ADMIN_PASSWORD` in `.env`.
 
-### 3. Generate an Access Token
+### 3. Add `sonar-project-localhost.properties` to your project
 
-1. Go to **My Account** → **Security** → **Generate Tokens**
-2. Create a token of type **Project Analysis Token**
-3. Copy the token and set it in `.env`:
+Create a file named `sonar-project-localhost.properties` at the root of the project you want to scan:
 
-```env
-SONAR_TOKEN=your_token_here
+```properties
+sonar.projectKey=my-project
+sonar.projectName=my-project
+sonar.projectVersion=1.0.0
+
+sonar.language=ts
+sonar.sourceEncoding=UTF-8
+sonar.sources=src/
+sonar.exclusions=**/node_modules/**,**/dist/**,**/*.spec.ts
+
+sonar.javascript.lcov.reportPaths=coverage/lcov.info
+sonar.qualitygate.wait=false
+
+# Recommended: disable SCM to avoid issues with non-ASCII filenames
+sonar.scm.disabled=true
 ```
+
+> This file is for local analysis only. Keep your existing `sonar-project.properties` (for CI/cloud) untouched.
 
 ### 4. Run the Scanner
 
 ```bash
-# Scan the current directory
-./scan.sh .
-
-# Scan any Node.js/NestJS project
+# Scan any project by path
 ./scan.sh /path/to/your/project
 ```
 
-The scanner container will:
+The scanner will automatically:
 
-1. Install project dependencies
-2. Run all 10 analysis steps
-3. Save JSON reports to `./reports/<date>/<scan-id>/`
+1. Start SonarQube if not running
+2. Generate a fresh token
+3. Create the project in SonarQube if it doesn't exist
+4. Install project dependencies
+5. Run all 10 analysis steps
+6. Run `sonar-scanner` using `sonar-project-localhost.properties`
+7. Wait for the Compute Engine to process the analysis
+8. Read metrics and quality gate status from the API
+9. Save JSON reports to `./reports/<date>/<scan-id>/`
 
 ### 5. View Results
 
-- **SonarQube dashboard:** http://localhost:9000/dashboard?id=your-project
+- **SonarQube dashboard:** `http://localhost:9000/dashboard?id=<project-key>` (replace `<project-key>` with your `sonar.projectKey`)
 - **Local reports:** `./reports/`
+
+---
+
+## Branch and Pull Request Analysis
+
+The SonarQube image includes the [Community Branch Plugin](./docs/community-branch-plugin.md), which enables branch and PR analysis in Community Edition.
+
+### Branch analysis
+
+```bash
+SONAR_BRANCH_NAME=feature/my-branch ./scan.sh /path/to/project
+```
+
+### Pull request analysis
+
+```bash
+SONAR_PR_KEY=42 \
+SONAR_PR_BRANCH=feature/my-branch \
+SONAR_PR_BASE=main \
+./scan.sh /path/to/project
+```
+
+> Do not mix `SONAR_BRANCH_NAME` and `SONAR_PR_*` in the same run.
 
 ---
 
 ## Analysis Steps
 
-| Step | Tool | What it checks |
-|------|------|----------------|
-| 1 | **Gitleaks** | Hardcoded secrets and credentials |
-| 2 | **TypeScript** | Compilation errors |
-| 3 | **ESLint** | Code quality rules (centralized config) |
-| 4 | **Prettier** | Code formatting (centralized config) |
-| 5 | **npm audit** | Dependency vulnerabilities |
-| 6 | **Knip** | Dead code (unused exports, files, deps) |
-| 7 | **Jest** | Tests + coverage |
-| 8 | **SonarQube** | Static analysis + quality gate |
-| 9 | **Spectral** | OpenAPI contract validation *(optional)* |
-| 10 | **Trivy** | Infrastructure security (IaC) *(optional)* |
+| Step | Tool           | What it checks                                    |
+|------|----------------|---------------------------------------------------|
+| 1    | **Gitleaks**   | Hardcoded secrets and credentials                 |
+| 2    | **TypeScript** | Compilation errors                                |
+| 3    | **ESLint**     | Code quality rules (centralized config)           |
+| 4    | **Prettier**   | Code formatting (centralized config)              |
+| 5    | **npm audit**  | Dependency vulnerabilities                        |
+| 6    | **Knip**       | Dead code (unused exports, files, deps)           |
+| 7    | **Jest**       | Tests + coverage                                  |
+| 8    | **SonarQube**  | Static analysis + quality gate                    |
+| 9    | **Spectral**   | OpenAPI contract validation *(optional)*          |
+| 10   | **Trivy**      | Infrastructure security (IaC) *(optional)*        |
 
 ---
 
@@ -105,7 +157,7 @@ chmod +x quality-gate.sh
 
 Validates OpenAPI/Swagger contracts using **Spectral**.
 
-### Activation
+### Activation (API Lint)
 
 ```bash
 # Via environment variable
@@ -124,13 +176,13 @@ ENABLE_API_LINT=true docker compose --profile scan up scanner
 - Paths do not end with `/`
 - `200`/`201` responses have `content` defined
 
-### Configuration
+### Configuration (API Lint)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ENABLE_API_LINT` | `false` | Enable/disable this step |
-| `API_LINT_SEVERITY` | `warn` | `warn` = report only, `error` = block pipeline |
-| `OPENAPI_FILE_PATH` | *(auto-detect)* | Manual path to the OpenAPI file |
+| Variable             | Default         | Description                                     |
+|----------------------|-----------------|-------------------------------------------------|
+| `ENABLE_API_LINT`    | `false`         | Enable/disable this step                        |
+| `API_LINT_SEVERITY`  | `warn`          | `warn` = report only, `error` = block pipeline  |
+| `OPENAPI_FILE_PATH`  | *(auto-detect)* | Manual path to the OpenAPI file                 |
 
 The OpenAPI file is auto-detected (`swagger.json`, `openapi.yaml`, etc.). To customize rules, edit `scanner/configs/.spectral.yml`. See the full guide in [`scanner/configs/README.md`](./scanner/configs/README.md).
 
@@ -140,7 +192,7 @@ The OpenAPI file is auto-detected (`swagger.json`, `openapi.yaml`, etc.). To cus
 
 Scans `Dockerfile`, `docker-compose.yml`, and Kubernetes manifests using **Trivy**.
 
-### Activation
+### Activation (Infra Scan)
 
 ```bash
 # Via environment variable
@@ -152,21 +204,21 @@ ENABLE_INFRA_SCAN=true docker compose --profile scan up scanner
 
 ### What is scanned
 
-| Type | Detected Files | Example Findings |
-|------|----------------|------------------|
-| **Dockerfile** | `Dockerfile`, `Dockerfile.*` | `latest` image tag, no `USER`, no `HEALTHCHECK`, use of `ADD` |
-| **docker-compose** | `docker-compose.yml`, `compose.yaml` | `privileged: true`, exposed ports, dangerous volumes |
-| **Kubernetes** | `deployment.yaml`, `service.yaml`, etc. | `hostNetwork`, missing `securityContext`, no resource limits |
+| Type               | Detected Files                          | Example Findings                                                |
+|--------------------|-----------------------------------------|-----------------------------------------------------------------|
+| **Dockerfile**     | `Dockerfile`, `Dockerfile.*`            | `latest` image tag, no `USER`, no `HEALTHCHECK`, use of `ADD`  |
+| **docker-compose** | `docker-compose.yml`, `compose.yaml`    | `privileged: true`, exposed ports, dangerous volumes            |
+| **Kubernetes**     | `deployment.yaml`, `service.yaml`, etc. | `hostNetwork`, missing `securityContext`, no resource limits    |
 
-### Configuration
+### Configuration (Infra Scan)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ENABLE_INFRA_SCAN` | `false` | Enable/disable this step |
-| `INFRA_SCAN_SEVERITY` | `HIGH` | Minimum blocking severity: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` |
-| `SCAN_DOCKERFILE` | `true` | Enable Dockerfile scanning |
-| `SCAN_K8S` | `true` | Enable Kubernetes manifest scanning |
-| `SCAN_COMPOSE` | `true` | Enable docker-compose scanning |
+| Variable               | Default  | Description                                                     |
+|------------------------|----------|-----------------------------------------------------------------|
+| `ENABLE_INFRA_SCAN`    | `false`  | Enable/disable this step                                        |
+| `INFRA_SCAN_SEVERITY`  | `HIGH`   | Minimum blocking severity: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`  |
+| `SCAN_DOCKERFILE`      | `true`   | Enable Dockerfile scanning                                      |
+| `SCAN_K8S`             | `true`   | Enable Kubernetes manifest scanning                             |
+| `SCAN_COMPOSE`         | `true`   | Enable docker-compose scanning                                  |
 
 To customize security policies, edit `scanner/configs/trivy-policy.yaml`. See the full guide in [`scanner/configs/README.md`](./scanner/configs/README.md).
 
@@ -174,14 +226,14 @@ To customize security policies, edit `scanner/configs/trivy-policy.yaml`. See th
 
 ## Useful Commands
 
-| Command | Description |
-|---------|-------------|
-| `docker compose up -d` | Start SonarQube |
-| `docker compose down` | Stop SonarQube |
-| `docker compose down -v` | Stop and remove all data |
-| `docker compose logs -f sonarqube` | View SonarQube logs |
-| `./scan.sh /path/to/project` | Run full analysis |
-| `./quality-gate.sh` | Run local pre-push checks |
+| Command                              | Description                   |
+|--------------------------------------|-------------------------------|
+| `docker compose up -d`               | Start SonarQube               |
+| `docker compose down`                | Stop SonarQube                |
+| `docker compose down -v`             | Stop and remove all data      |
+| `docker compose logs -f sonarqube`   | View SonarQube logs           |
+| `./scan.sh /path/to/project`         | Run full analysis             |
+| `./quality-gate.sh`                  | Run local pre-push checks     |
 
 ---
 
@@ -247,7 +299,7 @@ deploy:
 
 ### Scanner cannot find files
 
-Make sure `sonar-project.properties` is at the project root and all paths are correct.
+Make sure `sonar-project-localhost.properties` exists at the root of the target project and all paths (`sonar.sources`, `sonar.exclusions`) are correct.
 
 ---
 

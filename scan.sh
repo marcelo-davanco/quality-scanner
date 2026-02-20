@@ -105,6 +105,10 @@ echo ""
 PROJECT_PATH="$PROJECT_PATH" \
 SONAR_PROJECT_KEY="${PROJECT_NAME}" \
 SONAR_TOKEN="${SONAR_TOKEN}" \
+SONAR_BRANCH_NAME="${SONAR_BRANCH_NAME:-}" \
+SONAR_PR_KEY="${SONAR_PR_KEY:-}" \
+SONAR_PR_BRANCH="${SONAR_PR_BRANCH:-}" \
+SONAR_PR_BASE="${SONAR_PR_BASE:-}" \
 docker compose --profile scan run --rm scanner
 
 # Find the most recent report

@@ -27,6 +27,8 @@ dist/
 build/
 .next/
 out/
+dashboard/next-env.d.ts
+dashboard/tsconfig.json
 
 # ============================================================
 # Test & Coverage

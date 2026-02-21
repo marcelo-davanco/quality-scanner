@@ -47,6 +47,8 @@ services:
     depends_on:
       sonarqube:
         condition: service_started
+      api:
+        condition: service_started
     environment:
       SONAR_HOST_URL: ${SONAR_INTERNAL_URL:-http://sonarqube:9000}
       SONAR_ADMIN_USER: ${SONAR_ADMIN_USER:-admin}

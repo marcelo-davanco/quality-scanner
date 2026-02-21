@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   sonarqube:
     image: ${SONAR_IMAGE:-ghcr.io/marcelo-davanco/sonarqube-with-community-branch-plugin:latest}

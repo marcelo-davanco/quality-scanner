@@ -1,0 +1,38 @@
+{
+  "name": "api",
+  "root": "apps/api",
+  "sourceRoot": "apps/api/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "command": "nest build",
+      "options": {
+        "cwd": "apps/api"
+      }
+    },
+    "serve": {
+      "command": "nest start --watch",
+      "options": {
+        "cwd": "apps/api"
+      }
+    },
+    "start": {
+      "command": "node dist/main",
+      "options": {
+        "cwd": "apps/api"
+      }
+    },
+    "lint": {
+      "command": "eslint \"{src,test}/**/*.ts\"",
+      "options": {
+        "cwd": "apps/api"
+      }
+    },
+    "test": {
+      "command": "jest",
+      "options": {
+        "cwd": "apps/api"
+      }
+    }
+  }
+}

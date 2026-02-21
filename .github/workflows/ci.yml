@@ -26,13 +26,13 @@ jobs:
       - name: 🐚 Validate shell scripts (shellcheck)
         uses: ludeeus/action-shellcheck@master
         with:
-          scandir: "./scanner"
+          scandir: "./apps/scanner"
           severity: warning
 
       - name: 📋 Lint YAML files
         uses: ibiqlik/action-yamllint@v3
         with:
-          file_or_dir: scanner/configs
+          file_or_dir: apps/scanner/configs
           config_data: |
             extends: default
             rules:

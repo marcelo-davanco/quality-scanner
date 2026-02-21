@@ -63,7 +63,7 @@ cd "$SCRIPT_DIR"
 # Build scanner image if needed
 if ! docker image inspect "${SCANNER_IMG}" &>/dev/null; then
   echo "Building scanner image (first time)..."
-  docker build -t "${SCANNER_IMG}" ./scanner/
+  docker build -t "${SCANNER_IMG}" ./apps/scanner/
 fi
 
 # Start SonarQube if not running

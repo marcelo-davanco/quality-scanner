@@ -54,6 +54,7 @@ services:
       SONAR_PUBLIC_URL: ${SONAR_PUBLIC_URL:-http://localhost:9000}
       SONAR_PROJECT_KEY: ${SONAR_PROJECT_KEY:-my-project}
       SONAR_TOKEN: ${SONAR_TOKEN:-}
+      API_URL: http://api:3001
       ENABLE_GITLEAKS: ${ENABLE_GITLEAKS:-true}
       ENABLE_TYPESCRIPT: ${ENABLE_TYPESCRIPT:-true}
       ENABLE_ESLINT: ${ENABLE_ESLINT:-true}

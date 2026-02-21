@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
@@ -29,8 +30,11 @@ export class ProjectsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all projects' })
-  findAll() {
+  @ApiOperation({ summary: 'List all projects (optionally filter by key)' })
+  findAll(@Query('key') key?: string) {
+    if (key) {
+      return this.projectsService.findByKey(key).then((p) => [p]);
+    }
     return this.projectsService.findAll();
   }
 

@@ -39,6 +39,84 @@ write_report() {
   "details": ${details:-"[]"}
 }
 EOJSON
+  # Report to API if available
+  api_report_phase "${tool}" "${status}" "${summary}" "${details:-[]}"
+}
+
+# ============================================================
+# API Integration (optional — only when API_URL is set)
+# ============================================================
+API_URL="${API_URL:-}"
+API_SCAN_ID=""
+
+api_create_scan() {
+  if [ -z "${API_URL}" ]; then return; fi
+  local project_key="$1"
+  # Try to find project by key, create if not found
+  local project_resp
+  project_resp=$(curl -sf "${API_URL}/api/projects?key=${project_key}" 2>/dev/null || echo "")
+  local project_id
+  project_id=$(echo "${project_resp}" | python3 -c "
+import json, sys
+try:
+  data = json.loads(sys.stdin.read())
+  projects = data if isinstance(data, list) else [data]
+  for p in projects:
+    if p.get('projectKey') == '${project_key}':
+      print(p['id']); break
+except: pass
+" 2>/dev/null || echo "")
+
+  # Create project if not found
+  if [ -z "${project_id}" ]; then
+    local create_resp
+    create_resp=$(curl -sf -X POST "${API_URL}/api/projects" \
+      -H 'Content-Type: application/json' \
+      -d "{\"name\": \"${project_key}\", \"projectKey\": \"${project_key}\"}" 2>/dev/null || echo "")
+    project_id=$(echo "${create_resp}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('id',''))" 2>/dev/null || echo "")
+  fi
+
+  if [ -z "${project_id}" ]; then
+    echo -e "${YELLOW}  API: could not resolve project — results will only be saved to disk${NC}"
+    return
+  fi
+
+  # Create scan
+  local scan_body="{}"
+  if [ -n "${SONAR_BRANCH_NAME:-}" ]; then
+    scan_body="{\"branchName\": \"${SONAR_BRANCH_NAME}\"}"
+  elif [ -n "${SONAR_PR_KEY:-}" ]; then
+    scan_body="{\"prKey\": \"${SONAR_PR_KEY}\"}"
+  fi
+
+  local scan_resp
+  scan_resp=$(curl -sf -X POST "${API_URL}/api/projects/${project_id}/scans" \
+    -H 'Content-Type: application/json' \
+    -d "${scan_body}" 2>/dev/null || echo "")
+  API_SCAN_ID=$(echo "${scan_resp}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('id',''))" 2>/dev/null || echo "")
+
+  if [ -n "${API_SCAN_ID}" ]; then
+    echo -e "${CYAN}  API: scan registered (${API_SCAN_ID})${NC}"
+  fi
+}
+
+api_report_phase() {
+  if [ -z "${API_URL}" ] || [ -z "${API_SCAN_ID}" ]; then return; fi
+  local tool="$1" status="$2" summary="$3" details="$4"
+  curl -sf -X POST "${API_URL}/api/scans/${API_SCAN_ID}/phases" \
+    -H 'Content-Type: application/json' \
+    -d "{\"tool\": \"${tool}\", \"status\": \"${status}\", \"summary\": \"${summary}\", \"details\": ${details:-[]}}" \
+    >/dev/null 2>&1 || true
+}
+
+api_finalize_scan() {
+  if [ -z "${API_URL}" ] || [ -z "${API_SCAN_ID}" ]; then return; fi
+  local status="$1" errors="$2" warnings="$3" duration="$4"
+  curl -sf -X PATCH "${API_URL}/api/scans/${API_SCAN_ID}" \
+    -H 'Content-Type: application/json' \
+    -d "{\"status\": \"${status}\", \"errorsCount\": ${errors}, \"warningsCount\": ${warnings}, \"durationSeconds\": ${duration}}" \
+    >/dev/null 2>&1 || true
+  echo -e "${CYAN}  API: scan finalized (${status})${NC}"
 }
 
 # Verificar se o projeto foi montado
@@ -57,6 +135,9 @@ echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BOLD}${BLUE}  Quality Scanner — ${PROJECT_NAME}${NC}"
 echo -e "${BLUE}  Report: ${REPORTS_DIR}${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# Register scan in API (optional — only when API_URL is set)
+api_create_scan "${SONAR_PROJECT_KEY:-${PROJECT_NAME}}"
 
 # Install project dependencies if needed
 if [ ! -d /project/node_modules ]; then
@@ -640,6 +721,14 @@ cat > "${REPORTS_DIR}/summary.json" <<EOJSON
   "tools": ["gitleaks","typescript","eslint","prettier","audit","knip","jest","sonarqube","api-lint","infra-scan"]
 }
 EOJSON
+
+# Finalize scan in API (map gate status to API enum)
+case "${GATE_STATUS}" in
+  FAILED)                API_STATUS="failed" ;;
+  PASSED_WITH_WARNINGS)  API_STATUS="passed_with_warnings" ;;
+  *)                     API_STATUS="passed" ;;
+esac
+api_finalize_scan "${API_STATUS}" "${ERRORS}" "${WARNINGS}" "${DURATION}"
 
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}  Project: ${PROJECT_NAME} | Time: ${DURATION}s${NC}"

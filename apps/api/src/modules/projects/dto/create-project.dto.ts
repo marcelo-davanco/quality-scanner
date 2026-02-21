@@ -97,6 +97,12 @@ export class CreateProjectDto {
   @IsBoolean()
   enableInfraScan?: boolean;
 
+  // ── Quality Profile ────────────────────────────────────
+  @ApiPropertyOptional({ description: 'UUID of the quality profile to assign' })
+  @IsOptional()
+  @IsString()
+  qualityProfileId?: string | null;
+
   // ── Extra Config ────────────────────────────────────────
   @ApiPropertyOptional({ default: 'warn' })
   @IsOptional()

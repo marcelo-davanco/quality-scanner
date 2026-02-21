@@ -23,6 +23,8 @@ export interface Project {
   enableSonarqube: boolean;
   enableApiLint: boolean;
   enableInfraScan: boolean;
+  qualityProfileId: string | null;
+  qualityProfile?: QualityProfile | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -73,4 +75,67 @@ export async function getScan(id: string): Promise<Scan> {
 
 export async function getScanPhases(scanId: string): Promise<PhaseResult[]> {
   return fetchApi<PhaseResult[]>(`/scans/${scanId}/phases`);
+}
+
+// ── Quality Profiles ──────────────────────────────────────
+
+export interface QualityConfigItem {
+  id: string;
+  profileId: string;
+  tool: string;
+  filename: string;
+  content: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QualityProfile {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  configItems?: QualityConfigItem[];
+  projects?: Project[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getQualityProfiles(): Promise<QualityProfile[]> {
+  return fetchApi<QualityProfile[]>('/quality-profiles');
+}
+
+export async function getQualityProfile(id: string): Promise<QualityProfile> {
+  return fetchApi<QualityProfile>(`/quality-profiles/${id}`);
+}
+
+export async function getProfileConfigs(profileId: string): Promise<QualityConfigItem[]> {
+  return fetchApi<QualityConfigItem[]>(`/quality-profiles/${profileId}/configs`);
+}
+
+export { API_BASE };
+
+export async function patchApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function postApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteApi(path: string): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
 }

@@ -5,9 +5,10 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, Clock, CheckCircle2, XCircle,
-  AlertTriangle, RefreshCw, SkipForward, GitBranch, FolderOpen
+  AlertTriangle, RefreshCw, SkipForward, GitBranch, FolderOpen, Settings
 } from 'lucide-react';
-import type { Project, Scan } from '../../../lib/api';
+import type { Project, Scan, QualityProfile } from '../../../lib/api';
+import { patchApi } from '../../../lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -31,20 +32,36 @@ export default function ProjectDetailPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [scans, setScans] = useState<Scan[]>([]);
+  const [profiles, setProfiles] = useState<QualityProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchData = () => {
     Promise.all([
       fetch(`${API_BASE}/projects/${projectId}`).then(r => r.json()),
       fetch(`${API_BASE}/projects/${projectId}/scans`).then(r => r.json()),
+      fetch(`${API_BASE}/quality-profiles`).then(r => r.json()),
     ])
-      .then(([proj, scanList]) => {
+      .then(([proj, scanList, profileList]) => {
         setProject(proj);
         setScans(Array.isArray(scanList) ? scanList : []);
+        setProfiles(Array.isArray(profileList) ? profileList : []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [projectId]);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); }, [projectId]);
+
+  const handleProfileChange = async (profileId: string | null) => {
+    try {
+      await patchApi(`/projects/${projectId}`, { qualityProfileId: profileId });
+      setLoading(true);
+      fetchData();
+    } catch (e) {
+      alert(`Error: ${e}`);
+    }
+  };
 
   if (loading) {
     return (
@@ -123,6 +140,36 @@ export default function ProjectDetailPage() {
                 {phase}
               </span>
             ))}
+          </div>
+
+          {/* Quality Profile */}
+          <div className="mt-4 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <Settings size={14} className="text-purple-400" />
+                <span className="text-slate-400">Quality Profile:</span>
+                {project.qualityProfileId ? (
+                  <Link
+                    href={`/quality-profiles/${project.qualityProfileId}`}
+                    className="text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    {profiles.find(p => p.id === project.qualityProfileId)?.name || 'Unknown'}
+                  </Link>
+                ) : (
+                  <span className="text-slate-600">None</span>
+                )}
+              </div>
+              <select
+                value={project.qualityProfileId || ''}
+                onChange={e => handleProfileChange(e.target.value || null)}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-purple-500"
+              >
+                <option value="">No profile</option>
+                {profiles.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

@@ -43,9 +43,11 @@ export default function ProjectsPage() {
             <Shield size={22} className="text-blue-400" />
             Quality Scanner
           </h1>
-          <Link href="/scans" className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
-            All Scans →
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/quality-profiles" className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
+              Quality Profiles
+            </Link>
+          </div>
         </div>
       </header>
 

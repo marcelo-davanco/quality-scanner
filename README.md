@@ -6,7 +6,29 @@
 [![Release](https://img.shields.io/github/v/release/marcelo-davanco/quality-scanner)](https://github.com/marcelo-davanco/quality-scanner/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/marcelo-davanco/quality-scanner/ci.yml?branch=develop&label=CI)](https://github.com/marcelo-davanco/quality-scanner/actions/workflows/ci.yml)
 
-Docker-based code quality pipeline for NestJS/TypeScript projects, powered by SonarQube Community Edition with the [Community Branch Plugin](./docs/community-branch-plugin.md). Runs 10 automated analysis steps — from secret detection to infrastructure security — and generates a JSON report for each scan.
+An **Nx monorepo** that provides a complete code quality pipeline for NestJS/TypeScript projects. Powered by SonarQube Community Edition with the [Community Branch Plugin](./docs/community-branch-plugin.md), it runs 10 automated analysis steps — from secret detection to infrastructure security — and persists all results in a PostgreSQL database via a dedicated REST API.
+
+## Architecture
+
+```
+quality-scanner/ (Nx Monorepo)
+├── apps/scanner/     Docker-based 10-step quality pipeline
+├── apps/api/         NestJS REST API + TypeORM + PostgreSQL
+└── apps/dashboard/   Next.js results dashboard
+```
+
+### Services (docker compose)
+
+| Service      | Description                                    | Port  |
+|--------------|------------------------------------------------|-------|
+| `sonarqube`  | SonarQube Community Edition                    | 9000  |
+| `db`         | PostgreSQL for SonarQube                       | 5432  |
+| `api-db`     | PostgreSQL for the Quality Scanner API         | 5433  |
+| `liquibase`  | Runs DB migrations before the API starts       | —     |
+| `api`        | NestJS REST API (projects, scans, profiles)    | 3001  |
+| `scanner`    | 10-step analysis pipeline (on-demand)          | —     |
+
+---
 
 ## Prerequisites
 
@@ -25,6 +47,8 @@ Docker-based code quality pipeline for NestJS/TypeScript projects, powered by So
 > colima start --memory 6 --cpu 4
 > ```
 
+---
+
 ## Quick Start
 
 ### 1. Configure environment variables
@@ -33,244 +57,238 @@ Docker-based code quality pipeline for NestJS/TypeScript projects, powered by So
 cp .env.example .env
 ```
 
-Edit `.env` and set at minimum:
+Key variables to set:
 
-| Variable               | Description                                          |
-|------------------------|------------------------------------------------------|
-| `SONAR_ADMIN_PASSWORD` | SonarQube admin password (change after first login)  |
-| `SONAR_DB_PASSWORD`    | PostgreSQL password                                  |
+| Variable               | Description                                         |
+|------------------------|-----------------------------------------------------|
+| `SONAR_ADMIN_PASSWORD` | SonarQube admin password (change after first login) |
+| `SONAR_DB_PASSWORD`    | PostgreSQL password for SonarQube                   |
+| `API_DB_PASSWORD`      | PostgreSQL password for the API database            |
 
-> **Note:** `SONAR_TOKEN` is generated automatically by `scan.sh` on every run. Leave it empty in `.env`.
+> **Note:** `SONAR_TOKEN` is generated automatically by `scan.sh`. Leave it empty.
 
-### 2. Start SonarQube
+### 2. Start all services
 
 ```bash
 docker compose up -d
 ```
 
-Wait ~1–2 minutes for SonarQube to initialize, then open **[http://localhost:9000](http://localhost:9000)**.
+This starts SonarQube, the API database, runs Liquibase migrations, and starts the API.
 
-- **Default login:** `admin` / `admin`
-- Change the password on first login and update `SONAR_ADMIN_PASSWORD` in `.env`.
+- **SonarQube:** [http://localhost:9000](http://localhost:9000) — default login `admin` / `admin`
+- **API:** [http://localhost:3001/api/docs](http://localhost:3001/api/docs) — Swagger UI
+- **Dashboard:** [http://localhost:3000](http://localhost:3000)
 
 ### 3. Add `sonar-project-localhost.properties` to your project
-
-Create a file named `sonar-project-localhost.properties` at the root of the project you want to scan:
 
 ```properties
 sonar.projectKey=my-project
 sonar.projectName=my-project
 sonar.projectVersion=1.0.0
-
 sonar.language=ts
 sonar.sourceEncoding=UTF-8
 sonar.sources=src/
 sonar.exclusions=**/node_modules/**,**/dist/**,**/*.spec.ts
-
 sonar.javascript.lcov.reportPaths=coverage/lcov.info
 sonar.qualitygate.wait=false
-
-# Recommended: disable SCM to avoid issues with non-ASCII filenames
 sonar.scm.disabled=true
 ```
 
-> This file is for local analysis only. Keep your existing `sonar-project.properties` (for CI/cloud) untouched.
-
-### 4. Run the Scanner
+### 4. Run the scanner
 
 ```bash
-# Scan any project by path
 ./scan.sh /path/to/your/project
 ```
 
-The scanner will automatically:
-
+The scanner will:
 1. Start SonarQube if not running
 2. Generate a fresh token
 3. Create the project in SonarQube if it doesn't exist
-4. Install project dependencies
+4. **Register the scan in the API** and fetch quality profile configs
 5. Run all 10 analysis steps
-6. Run `sonar-scanner` using `sonar-project-localhost.properties`
-7. Wait for the Compute Engine to process the analysis
-8. Read metrics and quality gate status from the API
-9. Save JSON reports to `./reports/<date>/<scan-id>/`
+6. **Report each phase result to the API**
+7. Save JSON reports to `./reports/<date>/<scan-id>/`
+8. **Finalize the scan record in the API** with status and metrics
 
-### 5. View Results
+### 5. View results
 
-- **SonarQube dashboard:** `http://localhost:9000/dashboard?id=<project-key>` (replace `<project-key>` with your `sonar.projectKey`)
+- **Dashboard:** [http://localhost:3000](http://localhost:3000)
+- **API Swagger:** [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
+- **SonarQube:** `http://localhost:9000/dashboard?id=<project-key>`
 - **Local reports:** `./reports/`
+
+---
+
+## Analysis Steps
+
+| Step | Tool           | What it checks                                    | Default  |
+|------|----------------|---------------------------------------------------|----------|
+| 1    | **Gitleaks**   | Hardcoded secrets and credentials                 | enabled  |
+| 2    | **TypeScript** | Compilation errors                                | enabled  |
+| 3    | **ESLint**     | Code quality rules                                | enabled  |
+| 4    | **Prettier**   | Code formatting                                   | enabled  |
+| 5    | **npm audit**  | Dependency vulnerabilities                        | enabled  |
+| 6    | **Knip**       | Dead code (unused exports, files, deps)           | enabled  |
+| 7    | **Jest**       | Tests + coverage                                  | enabled  |
+| 8    | **SonarQube**  | Static analysis + quality gate                    | enabled  |
+| 9    | **Spectral**   | OpenAPI contract validation                       | disabled |
+| 10   | **Trivy**      | Infrastructure security (IaC)                     | disabled |
+
+### Enabling/disabling steps
+
+Each step can be toggled via environment variable:
+
+```bash
+ENABLE_GITLEAKS=true
+ENABLE_TYPESCRIPT=true
+ENABLE_ESLINT=true
+ENABLE_PRETTIER=true
+ENABLE_AUDIT=true
+ENABLE_KNIP=true
+ENABLE_JEST=true
+ENABLE_SONARQUBE=true
+ENABLE_API_LINT=false    # Step 9 — disabled by default
+ENABLE_INFRA_SCAN=false  # Step 10 — disabled by default
+```
+
+---
+
+## Quality Profiles
+
+Quality Profiles allow you to define reusable sets of config files (ESLint, Prettier, TypeScript, Gitleaks, etc.) and assign them to projects. When a scan runs, the scanner fetches the assigned profile's configs from the API and applies them automatically.
+
+### Managing profiles
+
+1. Open the dashboard at [http://localhost:3000/quality-profiles](http://localhost:3000/quality-profiles)
+2. Create a profile (e.g. "Strict Frontend")
+3. Add config items — each item is a tool name, filename, and full file content
+4. Link the profile to one or more projects
+
+### How it works
+
+```
+Quality Profile "Strict Frontend"
+  ├── .eslintrc.js        (custom ESLint rules)
+  ├── .prettierrc          (custom Prettier config)
+  └── tsconfig.strict.json (custom TypeScript config)
+
+Project A ──→ "Strict Frontend"
+Project B ──→ "Strict Frontend"
+Project C ──→ "Backend Standard"
+```
+
+When the scanner runs for a project that has a profile assigned, it calls `GET /api/projects/configs/:key` and overwrites the static config files in the container before the phases execute. If no profile is assigned, the static files from `quality-configs/` are used as fallback.
+
+---
+
+## REST API
+
+The API is available at `http://localhost:3001/api` with full Swagger documentation at `/api/docs`.
+
+### Endpoints
+
+| Resource           | Endpoints                                                    |
+|--------------------|--------------------------------------------------------------|
+| **Projects**       | `POST/GET /projects` · `GET/PATCH/DELETE /projects/:id`      |
+| **Scans**          | `POST /projects/:id/scans` · `GET/PATCH /scans/:id`          |
+| **Phase Results**  | `POST/GET /scans/:id/phases`                                 |
+| **Quality Profiles** | `POST/GET /quality-profiles` · `GET/PATCH/DELETE /quality-profiles/:id` |
+| **Config Items**   | `POST/GET /quality-profiles/:id/configs` · `PATCH/DELETE /quality-profiles/configs/:itemId` |
+| **Scanner Config** | `GET /projects/configs/:key` *(used by scanner)*             |
+
+### Database schema
+
+```
+projects ──→ quality_profiles ──→ quality_config_items
+    │
+    └──→ scans ──→ phase_results
+```
+
+Schema is managed by **Liquibase** — migrations run automatically on startup via the `liquibase` Docker service.
 
 ---
 
 ## Branch and Pull Request Analysis
 
-The SonarQube image includes the [Community Branch Plugin](./docs/community-branch-plugin.md), which enables branch and PR analysis in Community Edition.
-
-### Branch analysis
-
 ```bash
+# Branch analysis
 SONAR_BRANCH_NAME=feature/my-branch ./scan.sh /path/to/project
-```
 
-### Pull request analysis
-
-```bash
+# Pull request analysis
 SONAR_PR_KEY=42 \
 SONAR_PR_BRANCH=feature/my-branch \
 SONAR_PR_BASE=main \
 ./scan.sh /path/to/project
 ```
 
-> Do not mix `SONAR_BRANCH_NAME` and `SONAR_PR_*` in the same run.
-
 ---
 
-## Analysis Steps
+## Dashboard
 
-| Step | Tool           | What it checks                                    |
-|------|----------------|---------------------------------------------------|
-| 1    | **Gitleaks**   | Hardcoded secrets and credentials                 |
-| 2    | **TypeScript** | Compilation errors                                |
-| 3    | **ESLint**     | Code quality rules (centralized config)           |
-| 4    | **Prettier**   | Code formatting (centralized config)              |
-| 5    | **npm audit**  | Dependency vulnerabilities                        |
-| 6    | **Knip**       | Dead code (unused exports, files, deps)           |
-| 7    | **Jest**       | Tests + coverage                                  |
-| 8    | **SonarQube**  | Static analysis + quality gate                    |
-| 9    | **Spectral**   | OpenAPI contract validation *(optional)*          |
-| 10   | **Trivy**      | Infrastructure security (IaC) *(optional)*        |
+The Next.js dashboard connects to the API and provides:
 
----
-
-## Local Pre-Push Quality Gate
-
-Run the same checks locally before pushing:
-
-```bash
-chmod +x quality-gate.sh
-./quality-gate.sh
-```
-
----
-
-## API Lint — OpenAPI Contract Validation (Step 9)
-
-Validates OpenAPI/Swagger contracts using **Spectral**.
-
-### Activation (API Lint)
-
-```bash
-# Via environment variable
-ENABLE_API_LINT=true ./scan.sh /path/to/project
-
-# Via docker-compose
-ENABLE_API_LINT=true docker compose --profile scan up scanner
-```
-
-### What is validated
-
-- All routes have a `400` response mapped
-- Paths use `kebab-case` (e.g. `/my-resource`)
-- Schema properties use `camelCase`
-- Every operation has `operationId`, `description`, `summary`, and `tags`
-- Paths do not end with `/`
-- `200`/`201` responses have `content` defined
-
-### Configuration (API Lint)
-
-| Variable             | Default         | Description                                     |
-|----------------------|-----------------|-------------------------------------------------|
-| `ENABLE_API_LINT`    | `false`         | Enable/disable this step                        |
-| `API_LINT_SEVERITY`  | `warn`          | `warn` = report only, `error` = block pipeline  |
-| `OPENAPI_FILE_PATH`  | *(auto-detect)* | Manual path to the OpenAPI file                 |
-
-The OpenAPI file is auto-detected (`swagger.json`, `openapi.yaml`, etc.). To customize rules, edit `scanner/configs/.spectral.yml`. See the full guide in [`scanner/configs/README.md`](./scanner/configs/README.md).
-
----
-
-## Infra Scan — Infrastructure Security (Step 10)
-
-Scans `Dockerfile`, `docker-compose.yml`, and Kubernetes manifests using **Trivy**.
-
-### Activation (Infra Scan)
-
-```bash
-# Via environment variable
-ENABLE_INFRA_SCAN=true ./scan.sh /path/to/project
-
-# Via docker-compose
-ENABLE_INFRA_SCAN=true docker compose --profile scan up scanner
-```
-
-### What is scanned
-
-| Type               | Detected Files                          | Example Findings                                                |
-|--------------------|-----------------------------------------|-----------------------------------------------------------------|
-| **Dockerfile**     | `Dockerfile`, `Dockerfile.*`            | `latest` image tag, no `USER`, no `HEALTHCHECK`, use of `ADD`  |
-| **docker-compose** | `docker-compose.yml`, `compose.yaml`    | `privileged: true`, exposed ports, dangerous volumes            |
-| **Kubernetes**     | `deployment.yaml`, `service.yaml`, etc. | `hostNetwork`, missing `securityContext`, no resource limits    |
-
-### Configuration (Infra Scan)
-
-| Variable               | Default  | Description                                                     |
-|------------------------|----------|-----------------------------------------------------------------|
-| `ENABLE_INFRA_SCAN`    | `false`  | Enable/disable this step                                        |
-| `INFRA_SCAN_SEVERITY`  | `HIGH`   | Minimum blocking severity: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`  |
-| `SCAN_DOCKERFILE`      | `true`   | Enable Dockerfile scanning                                      |
-| `SCAN_K8S`             | `true`   | Enable Kubernetes manifest scanning                             |
-| `SCAN_COMPOSE`         | `true`   | Enable docker-compose scanning                                  |
-
-To customize security policies, edit `scanner/configs/trivy-policy.yaml`. See the full guide in [`scanner/configs/README.md`](./scanner/configs/README.md).
-
----
-
-## Useful Commands
-
-| Command                              | Description                   |
-|--------------------------------------|-------------------------------|
-| `docker compose up -d`               | Start SonarQube               |
-| `docker compose down`                | Stop SonarQube                |
-| `docker compose down -v`             | Stop and remove all data      |
-| `docker compose logs -f sonarqube`   | View SonarQube logs           |
-| `./scan.sh /path/to/project`         | Run full analysis             |
-| `./quality-gate.sh`                  | Run local pre-push checks     |
+| Page                              | Description                                      |
+|-----------------------------------|--------------------------------------------------|
+| `/projects`                       | List all registered projects                     |
+| `/projects/:id`                   | Project detail, scan history, profile assignment |
+| `/projects/:id/scans/:scanId`     | Scan detail with per-phase results               |
+| `/quality-profiles`               | List and create quality profiles                 |
+| `/quality-profiles/:id`           | Manage config items, link/unlink projects        |
 
 ---
 
 ## Project Structure
 
 ```text
-quality-scanner/
-├── docker-compose.yml          # SonarQube + PostgreSQL + Scanner
-├── sonar-project.properties    # Scanner configuration
-├── quality-gate.sh             # Local pre-push quality gate
-├── run-sonar.sh                # Standalone SonarQube analysis script
-├── scan.sh                     # Docker scanner wrapper
-├── .env.example                # Environment variable template
-├── scanner/
-│   ├── Dockerfile              # Scanner image
-│   ├── entrypoint.sh           # 10-step pipeline (container)
-│   ├── configs/
-│   │   ├── .eslintrc.js        # Centralized ESLint rules
-│   │   ├── .prettierrc         # Prettier formatting config
-│   │   ├── .gitleaks.toml      # Secret detection rules
-│   │   ├── .spectral.yml       # OpenAPI/Swagger rules
-│   │   ├── trivy-policy.yaml   # Trivy security policies
-│   │   └── README.md           # Configuration guide
-│   ├── scripts/
-│   │   ├── swagger-lint.sh     # OpenAPI lint script
-│   │   └── infra-scan.sh       # Infrastructure security script
-│   └── test/
-│       ├── fixtures/           # Safe/unsafe test fixtures
-│       ├── test-api-lint.sh    # API Lint tests
-│       └── test-infra-scan.sh  # Infra Scan tests
-├── quality-configs/            # Local quality gate configs
-├── dashboard/                  # Next.js results dashboard
-├── example-nestjs/             # Example NestJS project
-├── .gitignore
-├── LICENSE
+quality-scanner/                    # Nx Monorepo root
+├── apps/
+│   ├── scanner/                    # Docker-based quality pipeline
+│   │   ├── Dockerfile
+│   │   ├── entrypoint.sh           # 10-step pipeline
+│   │   ├── configs/                # Static fallback configs
+│   │   └── scripts/                # swagger-lint.sh, infra-scan.sh
+│   ├── api/                        # NestJS REST API
+│   │   ├── src/
+│   │   │   ├── modules/
+│   │   │   │   ├── projects/       # Project CRUD
+│   │   │   │   ├── scans/          # Scan + PhaseResult
+│   │   │   │   └── quality-profiles/ # Profile + ConfigItem CRUD
+│   │   │   └── config/             # DB config, data-source
+│   │   ├── liquibase/              # Liquibase changelogs
+│   │   │   └── changelogs/
+│   │   │       ├── v1.0.0/         # Initial schema
+│   │   │       └── v1.1.0/         # Quality profiles
+│   │   └── Dockerfile
+│   └── dashboard/                  # Next.js dashboard
+│       ├── app/
+│       │   ├── projects/           # Projects pages
+│       │   └── quality-profiles/   # Quality profiles pages
+│       └── lib/api.ts              # API client
+├── docker-compose.yml              # All services
+├── scan.sh                         # Scanner wrapper
+├── nx.json                         # Nx workspace config
+├── package.json                    # Workspace root
+├── tsconfig.base.json              # Shared TS config
+├── quality-configs/                # Static quality configs (fallback)
+├── .env.example
 └── README.md
 ```
+
+---
+
+## Useful Commands
+
+| Command                                    | Description                          |
+|--------------------------------------------|--------------------------------------|
+| `docker compose up -d`                     | Start all services                   |
+| `docker compose down`                      | Stop all services                    |
+| `docker compose down -v`                   | Stop and remove all data             |
+| `docker compose logs -f api`               | View API logs                        |
+| `docker compose logs -f sonarqube`         | View SonarQube logs                  |
+| `./scan.sh /path/to/project`               | Run full analysis                    |
+| `npx nx build api`                         | Build the API                        |
+| `npx nx serve api`                         | Run API in dev mode                  |
+| `npx nx dev dashboard`                     | Run dashboard in dev mode            |
 
 ---
 
@@ -279,27 +297,20 @@ quality-scanner/
 ### SonarQube does not start
 
 ```bash
-# Check logs
 docker compose logs sonarqube
-
-# Common fix on Linux/macOS — increase vm.max_map_count
 sudo sysctl -w vm.max_map_count=524288
 ```
 
-### Out of memory error
+### API does not start
 
-Add to the `sonarqube` service in `docker-compose.yml`:
-
-```yaml
-deploy:
-  resources:
-    limits:
-      memory: 2g
+```bash
+docker compose logs api
+docker compose logs liquibase   # Check if migrations ran successfully
 ```
 
-### Scanner cannot find files
+### Scanner cannot connect to API
 
-Make sure `sonar-project-localhost.properties` exists at the root of the target project and all paths (`sonar.sources`, `sonar.exclusions`) are correct.
+Ensure `API_URL=http://api:3001` is set in the scanner environment (already configured in `docker-compose.yml`). If running the scanner outside Docker, set `API_URL=http://localhost:3001`.
 
 ---
 

@@ -70,45 +70,51 @@ cd /project || exit 1
 # [1/8] Gitleaks — Secrets
 # ============================================================
 echo -e "\n${CYAN}[1/${TOTAL_STEPS}] Gitleaks — Verificando secrets...${NC}"
-gitleaks detect --source /project --no-git --config "${CONFIGS_DIR}/.gitleaks.toml" --report-format json --report-path "${REPORTS_DIR}/gitleaks_raw.json" 2>&1 || true
+if [ "${ENABLE_GITLEAKS:-true}" = "true" ]; then
+  gitleaks detect --source /project --no-git --config "${CONFIGS_DIR}/.gitleaks.toml" --report-format json --report-path "${REPORTS_DIR}/gitleaks_raw.json" 2>&1 || true
 
-if [ -f "${REPORTS_DIR}/gitleaks_raw.json" ] && [ -s "${REPORTS_DIR}/gitleaks_raw.json" ]; then
-  LEAKS_COUNT=$(python3 -c "import json; d=json.load(open('${REPORTS_DIR}/gitleaks_raw.json')); print(len(d))" 2>/dev/null || echo "0")
-else
-  LEAKS_COUNT=0
-fi
+  if [ -f "${REPORTS_DIR}/gitleaks_raw.json" ] && [ -s "${REPORTS_DIR}/gitleaks_raw.json" ]; then
+    LEAKS_COUNT=$(python3 -c "import json; d=json.load(open('${REPORTS_DIR}/gitleaks_raw.json')); print(len(d))" 2>/dev/null || echo "0")
+  else
+    LEAKS_COUNT=0
+  fi
 
-if [ "${LEAKS_COUNT:-0}" -gt 0 ]; then
-  step_fail "Gitleaks: ${LEAKS_COUNT} secret(s) found"
-  # Convert raw output to standardized format
-  python3 -c "
+  if [ "${LEAKS_COUNT:-0}" -gt 0 ]; then
+    step_fail "Gitleaks: ${LEAKS_COUNT} secret(s) found"
+    # Convert raw output to standardized format
+    python3 -c "
 import json
 raw = json.load(open('${REPORTS_DIR}/gitleaks_raw.json'))
 items = [{'file': r.get('File',''), 'rule': r.get('RuleID',''), 'line': r.get('StartLine',0), 'match': r.get('Match','')[:80]} for r in raw]
 print(json.dumps(items))
 " > /tmp/gitleaks_details.json 2>/dev/null || echo "[]" > /tmp/gitleaks_details.json
-  write_report "gitleaks" "fail" "${LEAKS_COUNT} secret(s) found" "$(cat /tmp/gitleaks_details.json)"
+    write_report "gitleaks" "fail" "${LEAKS_COUNT} secret(s) found" "$(cat /tmp/gitleaks_details.json)"
+  else
+    step_pass "No secrets found"
+    write_report "gitleaks" "pass" "No secrets found" "[]"
+  fi
+  rm -f "${REPORTS_DIR}/gitleaks_raw.json"
 else
-  step_pass "No secrets found"
-  write_report "gitleaks" "pass" "No secrets found" "[]"
+  step_warn "Gitleaks disabled (ENABLE_GITLEAKS=false)"
+  write_report "gitleaks" "skip" "Step disabled via ENABLE_GITLEAKS" "[]"
 fi
-rm -f "${REPORTS_DIR}/gitleaks_raw.json"
 
 # ============================================================
 # [2/8] TypeScript — Compilation
 # ============================================================
 echo -e "\n${CYAN}[2/${TOTAL_STEPS}] TypeScript — Checking compilation...${NC}"
-if [ -f /project/tsconfig.json ]; then
-  TSC_OUTPUT=$(npx tsc --noEmit 2>&1 || true)
-  TSC_ERRORS=$(echo "$TSC_OUTPUT" | grep -c "error TS" 2>/dev/null | tr -d '\n' || echo "0")
+if [ "${ENABLE_TYPESCRIPT:-true}" = "true" ]; then
+  if [ -f /project/tsconfig.json ]; then
+    TSC_OUTPUT=$(npx tsc --noEmit 2>&1 || true)
+    TSC_ERRORS=$(echo "$TSC_OUTPUT" | grep -c "error TS" 2>/dev/null | tr -d '\n' || echo "0")
 
-  if [ "${TSC_ERRORS:-0}" -eq 0 ]; then
-    step_pass "TypeScript compiles without errors"
-    write_report "typescript" "pass" "Compiles without errors" "[]"
-  else
-    step_fail "TypeScript: ${TSC_ERRORS} compilation error(s)"
-    # Extract error details
-    DETAILS=$(echo "$TSC_OUTPUT" | grep "error TS" | head -50 | python3 -c "
+    if [ "${TSC_ERRORS:-0}" -eq 0 ]; then
+      step_pass "TypeScript compiles without errors"
+      write_report "typescript" "pass" "Compiles without errors" "[]"
+    else
+      step_fail "TypeScript: ${TSC_ERRORS} compilation error(s)"
+      # Extract error details
+      DETAILS=$(echo "$TSC_OUTPUT" | grep "error TS" | head -50 | python3 -c "
 import sys, json, re
 items = []
 for line in sys.stdin:
@@ -118,38 +124,43 @@ for line in sys.stdin:
     items.append({'file': m.group(1), 'line': int(m.group(2)), 'code': m.group(4), 'message': m.group(5)})
 print(json.dumps(items))
 " 2>/dev/null || echo "[]")
-    write_report "typescript" "fail" "${TSC_ERRORS} compilation error(s)" "$DETAILS"
+      write_report "typescript" "fail" "${TSC_ERRORS} compilation error(s)" "$DETAILS"
+    fi
+  else
+    step_warn "tsconfig.json not found — skipping"
+    write_report "typescript" "skip" "tsconfig.json not found" "[]"
   fi
 else
-  step_warn "tsconfig.json not found — skipping"
-  write_report "typescript" "skip" "tsconfig.json not found" "[]"
+  step_warn "TypeScript disabled (ENABLE_TYPESCRIPT=false)"
+  write_report "typescript" "skip" "Step disabled via ENABLE_TYPESCRIPT" "[]"
 fi
 
 # ============================================================
 # [3/8] ESLint — Qualidade (usa config do CONTAINER)
 # ============================================================
 echo -e "\n${CYAN}[3/${TOTAL_STEPS}] ESLint — Regras de qualidade (config centralizada)...${NC}"
-if [ -d /project/src ]; then
-  # Gerar output JSON para o report
-  npx eslint /project/src --ext .ts \
-    --config "${CONFIGS_DIR}/.eslintrc.js" \
-    --resolve-plugins-relative-to /usr/local/lib/node_modules \
-    --no-eslintrc \
-    --format json > "${REPORTS_DIR}/eslint_raw.json" 2>/dev/null || true
+if [ "${ENABLE_ESLINT:-true}" = "true" ]; then
+  if [ -d /project/src ]; then
+    # Gerar output JSON para o report
+    npx eslint /project/src --ext .ts \
+      --config "${CONFIGS_DIR}/.eslintrc.js" \
+      --resolve-plugins-relative-to /usr/local/lib/node_modules \
+      --no-eslintrc \
+      --format json > "${REPORTS_DIR}/eslint_raw.json" 2>/dev/null || true
 
-  # Contar erros e warnings do JSON
-  ESLINT_COUNTS=$(python3 -c "
+    # Contar erros e warnings do JSON
+    ESLINT_COUNTS=$(python3 -c "
 import json
 data = json.load(open('${REPORTS_DIR}/eslint_raw.json'))
 errors = sum(f['errorCount'] for f in data)
 warnings = sum(f['warningCount'] for f in data)
 print(f'{errors} {warnings}')
 " 2>/dev/null || echo "0 0")
-  ESLINT_ERRORS=$(echo "$ESLINT_COUNTS" | awk '{print $1}')
-  ESLINT_WARNINGS=$(echo "$ESLINT_COUNTS" | awk '{print $2}')
+    ESLINT_ERRORS=$(echo "$ESLINT_COUNTS" | awk '{print $1}')
+    ESLINT_WARNINGS=$(echo "$ESLINT_COUNTS" | awk '{print $2}')
 
-  # Gerar detalhes agrupados por regra
-  DETAILS=$(python3 -c "
+    # Gerar detalhes agrupados por regra
+    DETAILS=$(python3 -c "
 import json
 from collections import defaultdict
 data = json.load(open('${REPORTS_DIR}/eslint_raw.json'))
@@ -163,61 +174,71 @@ items = [{'rule': k, 'count': len(v), 'occurrences': v[:10]} for k, v in sorted(
 print(json.dumps(items))
 " 2>/dev/null || echo "[]")
 
-  if [ "${ESLINT_ERRORS:-0}" -gt 0 ]; then
-    step_fail "ESLint: ${ESLINT_ERRORS} erro(s), ${ESLINT_WARNINGS} warning(s)"
-    write_report "eslint" "fail" "${ESLINT_ERRORS} erro(s), ${ESLINT_WARNINGS} warning(s)" "$DETAILS"
-  elif [ "${ESLINT_WARNINGS:-0}" -gt 0 ]; then
-    step_warn "ESLint: ${ESLINT_WARNINGS} warning(s)"
-    write_report "eslint" "warn" "${ESLINT_WARNINGS} warning(s)" "$DETAILS"
+    if [ "${ESLINT_ERRORS:-0}" -gt 0 ]; then
+      step_fail "ESLint: ${ESLINT_ERRORS} erro(s), ${ESLINT_WARNINGS} warning(s)"
+      write_report "eslint" "fail" "${ESLINT_ERRORS} erro(s), ${ESLINT_WARNINGS} warning(s)" "$DETAILS"
+    elif [ "${ESLINT_WARNINGS:-0}" -gt 0 ]; then
+      step_warn "ESLint: ${ESLINT_WARNINGS} warning(s)"
+      write_report "eslint" "warn" "${ESLINT_WARNINGS} warning(s)" "$DETAILS"
+    else
+      step_pass "ESLint: nenhum problema"
+      write_report "eslint" "pass" "Nenhum problema" "[]"
+    fi
+    rm -f "${REPORTS_DIR}/eslint_raw.json"
   else
-    step_pass "ESLint: nenhum problema"
-    write_report "eslint" "pass" "Nenhum problema" "[]"
+    step_warn "src/ directory not found — skipping ESLint"
+    write_report "eslint" "skip" "src/ directory not found" "[]"
   fi
-  rm -f "${REPORTS_DIR}/eslint_raw.json"
 else
-  step_warn "src/ directory not found — skipping ESLint"
-  write_report "eslint" "skip" "src/ directory not found" "[]"
+  step_warn "ESLint disabled (ENABLE_ESLINT=false)"
+  write_report "eslint" "skip" "Step disabled via ENABLE_ESLINT" "[]"
 fi
 
 # ============================================================
 # [4/8] Prettier — Formatting (uses CONTAINER config)
 # ============================================================
 echo -e "\n${CYAN}[4/${TOTAL_STEPS}] Prettier — Formatting (centralized config)...${NC}"
-if [ -d /project/src ]; then
-  PRETTIER_OUTPUT=$(npx prettier --check '/project/src/**/*.ts' \
-    --config "${CONFIGS_DIR}/.prettierrc" 2>&1 || true)
+if [ "${ENABLE_PRETTIER:-true}" = "true" ]; then
+  if [ -d /project/src ]; then
+    PRETTIER_OUTPUT=$(npx prettier --check '/project/src/**/*.ts' \
+      --config "${CONFIGS_DIR}/.prettierrc" 2>&1 || true)
 
-  if echo "$PRETTIER_OUTPUT" | grep -q "All matched files use Prettier code style"; then
-    step_pass "Formatting OK"
-    write_report "prettier" "pass" "All files formatted" "[]"
-  else
-    FILES_LIST=$(echo "$PRETTIER_OUTPUT" | grep "\.ts" | sed 's|/project/||g' || true)
-    UNFORMATTED=$(echo "$FILES_LIST" | grep -c "\.ts" 2>/dev/null | tr -d '\n' || echo "0")
-    if [ "${UNFORMATTED:-0}" -gt 0 ]; then
-      step_warn "Prettier: ${UNFORMATTED} file(s) with non-standard formatting"
-      DETAILS=$(echo "$FILES_LIST" | python3 -c "
+    if echo "$PRETTIER_OUTPUT" | grep -q "All matched files use Prettier code style"; then
+      step_pass "Formatting OK"
+      write_report "prettier" "pass" "All files formatted" "[]"
+    else
+      FILES_LIST=$(echo "$PRETTIER_OUTPUT" | grep "\.ts" | sed 's|/project/||g' || true)
+      UNFORMATTED=$(echo "$FILES_LIST" | grep -c "\.ts" 2>/dev/null | tr -d '\n' || echo "0")
+      if [ "${UNFORMATTED:-0}" -gt 0 ]; then
+        step_warn "Prettier: ${UNFORMATTED} file(s) with non-standard formatting"
+        DETAILS=$(echo "$FILES_LIST" | python3 -c "
 import sys, json
 items = [{'file': line.strip()} for line in sys.stdin if line.strip()]
 print(json.dumps(items))
 " 2>/dev/null || echo "[]")
-      write_report "prettier" "warn" "${UNFORMATTED} file(s) with non-standard formatting" "$DETAILS"
-    else
-      step_pass "Formatting OK"
-      write_report "prettier" "pass" "All files formatted" "[]"
+        write_report "prettier" "warn" "${UNFORMATTED} file(s) with non-standard formatting" "$DETAILS"
+      else
+        step_pass "Formatting OK"
+        write_report "prettier" "pass" "All files formatted" "[]"
+      fi
     fi
+  else
+    step_warn "src/ directory not found — skipping Prettier"
+    write_report "prettier" "skip" "src/ directory not found" "[]"
   fi
 else
-  step_warn "src/ directory not found — skipping Prettier"
-  write_report "prettier" "skip" "src/ directory not found" "[]"
+  step_warn "Prettier disabled (ENABLE_PRETTIER=false)"
+  write_report "prettier" "skip" "Step disabled via ENABLE_PRETTIER" "[]"
 fi
 
 # ============================================================
 # [5/8] npm audit — Vulnerabilidades
 # ============================================================
 echo -e "\n${CYAN}[5/${TOTAL_STEPS}] npm audit — Vulnerabilidades...${NC}"
-npm audit --production --json > "${REPORTS_DIR}/audit_raw.json" 2>/dev/null || true
+if [ "${ENABLE_AUDIT:-true}" = "true" ]; then
+  npm audit --production --json > "${REPORTS_DIR}/audit_raw.json" 2>/dev/null || true
 
-AUDIT_COUNTS=$(python3 -c "
+  AUDIT_COUNTS=$(python3 -c "
 import json
 try:
   data = json.load(open('${REPORTS_DIR}/audit_raw.json'))
@@ -225,12 +246,12 @@ try:
   print(f\"{meta.get('critical',0)} {meta.get('high',0)} {meta.get('moderate',0)} {meta.get('low',0)}\")
 except: print('0 0 0 0')
 " 2>/dev/null || echo "0 0 0 0")
-CRITICAL=$(echo "$AUDIT_COUNTS" | awk '{print $1}')
-HIGH=$(echo "$AUDIT_COUNTS" | awk '{print $2}')
-MODERATE=$(echo "$AUDIT_COUNTS" | awk '{print $3}')
-LOW=$(echo "$AUDIT_COUNTS" | awk '{print $4}')
+  CRITICAL=$(echo "$AUDIT_COUNTS" | awk '{print $1}')
+  HIGH=$(echo "$AUDIT_COUNTS" | awk '{print $2}')
+  MODERATE=$(echo "$AUDIT_COUNTS" | awk '{print $3}')
+  LOW=$(echo "$AUDIT_COUNTS" | awk '{print $4}')
 
-DETAILS=$(python3 -c "
+  DETAILS=$(python3 -c "
 import json
 try:
   data = json.load(open('${REPORTS_DIR}/audit_raw.json'))
@@ -243,25 +264,30 @@ try:
 except: print('[]')
 " 2>/dev/null || echo "[]")
 
-if [ "${CRITICAL:-0}" -gt 0 ]; then
-  step_fail "npm audit: ${CRITICAL} critical, ${HIGH} high"
-  write_report "audit" "fail" "${CRITICAL} critical, ${HIGH} high, ${MODERATE} moderate, ${LOW} low" "$DETAILS"
-elif [ "${HIGH:-0}" -gt 0 ]; then
-  step_warn "npm audit: ${HIGH} high"
-  write_report "audit" "warn" "${HIGH} high, ${MODERATE} moderate, ${LOW} low" "$DETAILS"
+  if [ "${CRITICAL:-0}" -gt 0 ]; then
+    step_fail "npm audit: ${CRITICAL} critical, ${HIGH} high"
+    write_report "audit" "fail" "${CRITICAL} critical, ${HIGH} high, ${MODERATE} moderate, ${LOW} low" "$DETAILS"
+  elif [ "${HIGH:-0}" -gt 0 ]; then
+    step_warn "npm audit: ${HIGH} high"
+    write_report "audit" "warn" "${HIGH} high, ${MODERATE} moderate, ${LOW} low" "$DETAILS"
+  else
+    step_pass "No critical vulnerabilities"
+    write_report "audit" "pass" "No critical vulnerabilities" "$DETAILS"
+  fi
+  rm -f "${REPORTS_DIR}/audit_raw.json"
 else
-  step_pass "No critical vulnerabilities"
-  write_report "audit" "pass" "No critical vulnerabilities" "$DETAILS"
+  step_warn "npm audit disabled (ENABLE_AUDIT=false)"
+  write_report "audit" "skip" "Step disabled via ENABLE_AUDIT" "[]"
 fi
-rm -f "${REPORTS_DIR}/audit_raw.json"
 
 # ============================================================
 # [6/8] Knip — Dead code
 # ============================================================
 echo -e "\n${CYAN}[6/${TOTAL_STEPS}] Knip — Dead code...${NC}"
-KNIP_OUTPUT=$(npx knip --no-progress 2>&1 || true)
+if [ "${ENABLE_KNIP:-true}" = "true" ]; then
+  KNIP_OUTPUT=$(npx knip --no-progress 2>&1 || true)
 
-KNIP_DETAILS=$(echo "$KNIP_OUTPUT" | python3 -c "
+  KNIP_DETAILS=$(echo "$KNIP_OUTPUT" | python3 -c "
 import sys, json, re
 items = []
 current_type = 'unknown'
@@ -275,28 +301,33 @@ for line in sys.stdin:
 print(json.dumps(items[:100]))
 " 2>/dev/null || echo "[]")
 
-UNUSED_EXPORTS=$(echo "$KNIP_OUTPUT" | grep -c "Unused export" 2>/dev/null | tr -d '\n' || echo "0")
-UNUSED_FILES=$(echo "$KNIP_OUTPUT" | grep -c "Unused file" 2>/dev/null | tr -d '\n' || echo "0")
-UNUSED_DEPS=$(echo "$KNIP_OUTPUT" | grep -c "Unused depend" 2>/dev/null | tr -d '\n' || echo "0")
+  UNUSED_EXPORTS=$(echo "$KNIP_OUTPUT" | grep -c "Unused export" 2>/dev/null | tr -d '\n' || echo "0")
+  UNUSED_FILES=$(echo "$KNIP_OUTPUT" | grep -c "Unused file" 2>/dev/null | tr -d '\n' || echo "0")
+  UNUSED_DEPS=$(echo "$KNIP_OUTPUT" | grep -c "Unused depend" 2>/dev/null | tr -d '\n' || echo "0")
 
-if [ "${UNUSED_FILES:-0}" -gt 0 ] || [ "${UNUSED_EXPORTS:-0}" -gt 0 ] || [ "${UNUSED_DEPS:-0}" -gt 0 ]; then
-  step_warn "Knip: ${UNUSED_FILES} file(s), ${UNUSED_EXPORTS} export(s), ${UNUSED_DEPS} dep(s) unused"
-  write_report "knip" "warn" "${UNUSED_FILES} arquivo(s), ${UNUSED_EXPORTS} export(s), ${UNUSED_DEPS} dep(s)" "$KNIP_DETAILS"
+  if [ "${UNUSED_FILES:-0}" -gt 0 ] || [ "${UNUSED_EXPORTS:-0}" -gt 0 ] || [ "${UNUSED_DEPS:-0}" -gt 0 ]; then
+    step_warn "Knip: ${UNUSED_FILES} file(s), ${UNUSED_EXPORTS} export(s), ${UNUSED_DEPS} dep(s) unused"
+    write_report "knip" "warn" "${UNUSED_FILES} arquivo(s), ${UNUSED_EXPORTS} export(s), ${UNUSED_DEPS} dep(s)" "$KNIP_DETAILS"
+  else
+    step_pass "No dead code detected"
+    write_report "knip" "pass" "No dead code detected" "[]"
+  fi
 else
-  step_pass "No dead code detected"
-  write_report "knip" "pass" "No dead code detected" "[]"
+  step_warn "Knip disabled (ENABLE_KNIP=false)"
+  write_report "knip" "skip" "Step disabled via ENABLE_KNIP" "[]"
 fi
 
 # ============================================================
 # [7/8] Jest — Testes + Cobertura
 # ============================================================
 echo -e "\n${CYAN}[7/${TOTAL_STEPS}] Jest — Testes + Cobertura...${NC}"
-JEST_OUTPUT=$(npx jest --coverage --silent --forceExit --json 2>/dev/null || true)
+if [ "${ENABLE_JEST:-true}" = "true" ]; then
+  JEST_OUTPUT=$(npx jest --coverage --silent --forceExit --json 2>/dev/null || true)
 
-# Salvar JSON do Jest
-echo "$JEST_OUTPUT" > "${REPORTS_DIR}/jest_raw.json" 2>/dev/null || true
+  # Salvar JSON do Jest
+  echo "$JEST_OUTPUT" > "${REPORTS_DIR}/jest_raw.json" 2>/dev/null || true
 
-JEST_SUMMARY=$(python3 -c "
+  JEST_SUMMARY=$(python3 -c "
 import json, sys
 try:
   data = json.loads(open('${REPORTS_DIR}/jest_raw.json').read())
@@ -352,19 +383,19 @@ except Exception as e:
   print(json.dumps({'passed':0,'failed':0,'total':0,'coverage':{},'failures':[],'files':[],'error':str(e)}))
 " 2>/dev/null || echo '{"passed":0,"failed":0,"total":0,"coverage":{},"failures":[],"files":[]}')
 
-JEST_FAILED=$(echo "$JEST_SUMMARY" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('failed',0))" 2>/dev/null || echo "0")
-JEST_PASSED=$(echo "$JEST_SUMMARY" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('passed',0))" 2>/dev/null || echo "0")
+  JEST_FAILED=$(echo "$JEST_SUMMARY" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('failed',0))" 2>/dev/null || echo "0")
+  JEST_PASSED=$(echo "$JEST_SUMMARY" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('passed',0))" 2>/dev/null || echo "0")
 
-if [ "${JEST_FAILED:-0}" -gt 0 ]; then
-  step_fail "Jest: ${JEST_FAILED} teste(s) falhando"
-  write_report "jest" "fail" "${JEST_FAILED} falhando, ${JEST_PASSED} passando" "$JEST_SUMMARY"
-else
-  step_pass "Testes: todos passando (${JEST_PASSED})"
-  write_report "jest" "pass" "${JEST_PASSED} teste(s) passando" "$JEST_SUMMARY"
-fi
+  if [ "${JEST_FAILED:-0}" -gt 0 ]; then
+    step_fail "Jest: ${JEST_FAILED} teste(s) falhando"
+    write_report "jest" "fail" "${JEST_FAILED} falhando, ${JEST_PASSED} passando" "$JEST_SUMMARY"
+  else
+    step_pass "Testes: todos passando (${JEST_PASSED})"
+    write_report "jest" "pass" "${JEST_PASSED} teste(s) passando" "$JEST_SUMMARY"
+  fi
 
-# Mostrar cobertura no terminal
-echo "$JEST_SUMMARY" | python3 -c "
+  # Mostrar cobertura no terminal
+  echo "$JEST_SUMMARY" | python3 -c "
 import json, sys
 d = json.loads(sys.stdin.read())
 cov = d.get('coverage', {})
@@ -375,31 +406,36 @@ for k in ['statements','branches','functions','lines']:
   covered = c.get('covered', 0)
   print(f'    {k.capitalize():14s}: {pct}% ( {covered}/{total} )')
 " 2>/dev/null || true
-rm -f "${REPORTS_DIR}/jest_raw.json"
+  rm -f "${REPORTS_DIR}/jest_raw.json"
+else
+  step_warn "Jest disabled (ENABLE_JEST=false)"
+  write_report "jest" "skip" "Step disabled via ENABLE_JEST" "[]"
+fi
 
 # ============================================================
 # [8/8] SonarQube — Triggers analysis via REST API
 # ============================================================
 echo -e "\n${CYAN}[8/${TOTAL_STEPS}] SonarQube — Triggering analysis...${NC}"
+if [ "${ENABLE_SONARQUBE:-true}" = "true" ]; then
 
-SONAR_HOST="${SONAR_HOST_URL:-http://sonarqube:9000}"
-SONAR_KEY="${SONAR_PROJECT_KEY:-${PROJECT_NAME}}"
-SQ_USER="${SONAR_ADMIN_USER:-admin}"
-SQ_PASS="${SONAR_ADMIN_PASSWORD:-admin}"
-SQ_PUBLIC="${SONAR_PUBLIC_URL:-${SONAR_HOST}}"
+  SONAR_HOST="${SONAR_HOST_URL:-http://sonarqube:9000}"
+  SONAR_KEY="${SONAR_PROJECT_KEY:-${PROJECT_NAME}}"
+  SQ_USER="${SONAR_ADMIN_USER:-admin}"
+  SQ_PASS="${SONAR_ADMIN_PASSWORD:-admin}"
+  SQ_PUBLIC="${SONAR_PUBLIC_URL:-${SONAR_HOST}}"
 
-# Build branch/PR query params for SonarQube API calls (community-branch-plugin)
-SQ_BRANCH_PARAM=""
-SQ_QG_BRANCH_PARAM=""
-if [ -n "${SONAR_PR_KEY:-}" ]; then
-  SQ_BRANCH_PARAM="&pullRequest=${SONAR_PR_KEY}"
-  SQ_QG_BRANCH_PARAM="&pullRequest=${SONAR_PR_KEY}"
-elif [ -n "${SONAR_BRANCH_NAME:-}" ]; then
-  SQ_BRANCH_PARAM="&branch=${SONAR_BRANCH_NAME}"
-  SQ_QG_BRANCH_PARAM="&branch=${SONAR_BRANCH_NAME}"
-fi
+  # Build branch/PR query params for SonarQube API calls (community-branch-plugin)
+  SQ_BRANCH_PARAM=""
+  SQ_QG_BRANCH_PARAM=""
+  if [ -n "${SONAR_PR_KEY:-}" ]; then
+    SQ_BRANCH_PARAM="&pullRequest=${SONAR_PR_KEY}"
+    SQ_QG_BRANCH_PARAM="&pullRequest=${SONAR_PR_KEY}"
+  elif [ -n "${SONAR_BRANCH_NAME:-}" ]; then
+    SQ_BRANCH_PARAM="&branch=${SONAR_BRANCH_NAME}"
+    SQ_QG_BRANCH_PARAM="&branch=${SONAR_BRANCH_NAME}"
+  fi
 
-if curl -s "${SONAR_HOST}/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; then
+  if curl -s "${SONAR_HOST}/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; then
   # Run sonar-scanner if sonar-project-localhost.properties exists in the target project
   SONAR_PROPS_FILE="/project/sonar-project-localhost.properties"
   if [ -f "${SONAR_PROPS_FILE}" ]; then
@@ -509,6 +545,10 @@ print(json.dumps(result))
 else
   step_warn "SonarQube not accessible at ${SONAR_HOST} — skipping"
   write_report "sonarqube" "skip" "SonarQube not accessible" "[]"
+  fi
+else
+  step_warn "SonarQube disabled (ENABLE_SONARQUBE=false)"
+  write_report "sonarqube" "skip" "Step disabled via ENABLE_SONARQUBE" "[]"
 fi
 
 # ============================================================

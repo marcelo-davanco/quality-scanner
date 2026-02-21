@@ -32,7 +32,11 @@ services:
     networks:
       - sonar-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${SONAR_DB_USER:-sonar} -d ${SONAR_DB_NAME:-sonarqube}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${SONAR_DB_USER:-sonar} -d ${SONAR_DB_NAME:-sonarqube}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -52,6 +56,14 @@ services:
       SONAR_PUBLIC_URL: ${SONAR_PUBLIC_URL:-http://localhost:9000}
       SONAR_PROJECT_KEY: ${SONAR_PROJECT_KEY:-my-project}
       SONAR_TOKEN: ${SONAR_TOKEN:-}
+      ENABLE_GITLEAKS: ${ENABLE_GITLEAKS:-true}
+      ENABLE_TYPESCRIPT: ${ENABLE_TYPESCRIPT:-true}
+      ENABLE_ESLINT: ${ENABLE_ESLINT:-true}
+      ENABLE_PRETTIER: ${ENABLE_PRETTIER:-true}
+      ENABLE_AUDIT: ${ENABLE_AUDIT:-true}
+      ENABLE_KNIP: ${ENABLE_KNIP:-true}
+      ENABLE_JEST: ${ENABLE_JEST:-true}
+      ENABLE_SONARQUBE: ${ENABLE_SONARQUBE:-true}
       ENABLE_API_LINT: ${ENABLE_API_LINT:-false}
       API_LINT_SEVERITY: ${API_LINT_SEVERITY:-warn}
       OPENAPI_FILE_PATH: ${OPENAPI_FILE_PATH:-}

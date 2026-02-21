@@ -119,6 +119,41 @@ api_finalize_scan() {
   echo -e "${CYAN}  API: scan finalized (${status})${NC}"
 }
 
+api_fetch_configs() {
+  if [ -z "${API_URL}" ]; then return; fi
+  local project_key="$1"
+  local resp
+  resp=$(curl -sf "${API_URL}/api/projects/configs/${project_key}" 2>/dev/null || echo "")
+  if [ -z "${resp}" ]; then
+    echo -e "${YELLOW}  API: could not fetch configs — using static files from ${CONFIGS_DIR}${NC}"
+    return
+  fi
+
+  local config_count
+  config_count=$(echo "${resp}" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(len(d.get('configs',[])))" 2>/dev/null || echo "0")
+
+  if [ "${config_count}" = "0" ]; then
+    echo -e "${YELLOW}  API: no quality profile configs found — using static files${NC}"
+    return
+  fi
+
+  local profile_name
+  profile_name=$(echo "${resp}" | python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('profileName',''))" 2>/dev/null || echo "")
+  echo -e "${CYAN}  API: applying quality profile \"${profile_name}\" (${config_count} config(s))${NC}"
+
+  # Write each config file to CONFIGS_DIR
+  echo "${resp}" | python3 -c "
+import json, sys, os
+data = json.loads(sys.stdin.read())
+configs_dir = '${CONFIGS_DIR}'
+for item in data.get('configs', []):
+    filepath = os.path.join(configs_dir, item['filename'])
+    with open(filepath, 'w') as f:
+        f.write(item['content'])
+    print(f\"  → {item['filename']} ({item['tool']})\")
+" 2>/dev/null || echo -e "${YELLOW}  API: failed to write configs — using static files${NC}"
+}
+
 # Verificar se o projeto foi montado
 if [ ! -f /project/package.json ]; then
   echo -e "${RED}Erro: Nenhum projeto encontrado em /project${NC}"
@@ -138,6 +173,9 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 
 # Register scan in API (optional — only when API_URL is set)
 api_create_scan "${SONAR_PROJECT_KEY:-${PROJECT_NAME}}"
+
+# Fetch quality profile configs from API (overwrites static files in CONFIGS_DIR)
+api_fetch_configs "${SONAR_PROJECT_KEY:-${PROJECT_NAME}}"
 
 # Install project dependencies if needed
 if [ ! -d /project/node_modules ]; then

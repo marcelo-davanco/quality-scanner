@@ -38,6 +38,14 @@ export class ProjectsController {
     return this.projectsService.findAll();
   }
 
+  @Get('configs/:key')
+  @ApiOperation({ summary: 'Get quality config items for a project by its key (used by scanner)' })
+  @ApiResponse({ status: 200, description: 'Config items returned' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
+  getConfigsByKey(@Param('key') key: string) {
+    return this.projectsService.findConfigsByKey(key);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get project by ID (with scans)' })
   @ApiResponse({ status: 404, description: 'Project not found' })

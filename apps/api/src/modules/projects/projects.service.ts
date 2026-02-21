@@ -46,6 +46,27 @@ export class ProjectsService {
     return project;
   }
 
+  async findConfigsByKey(projectKey: string): Promise<{ profileName: string; configs: { tool: string; filename: string; content: string }[] }> {
+    const project = await this.projectRepo.findOne({
+      where: { projectKey },
+      relations: ['qualityProfile', 'qualityProfile.configItems'],
+    });
+    if (!project) {
+      throw new NotFoundException(`Project with key "${projectKey}" not found`);
+    }
+    if (!project.qualityProfile) {
+      return { profileName: '', configs: [] };
+    }
+    return {
+      profileName: project.qualityProfile.name,
+      configs: (project.qualityProfile.configItems || []).map((item) => ({
+        tool: item.tool,
+        filename: item.filename,
+        content: item.content,
+      })),
+    };
+  }
+
   async update(id: string, dto: UpdateProjectDto): Promise<Project> {
     const project = await this.findOne(id);
     Object.assign(project, dto);

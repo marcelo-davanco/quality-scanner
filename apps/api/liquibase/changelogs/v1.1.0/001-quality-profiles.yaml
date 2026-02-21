@@ -1,0 +1,128 @@
+databaseChangeLog:
+  # ── quality_profiles ───────────────────────────────────
+  - changeSet:
+      id: 002-create-table-quality-profiles
+      author: quality-scanner
+      changes:
+        - createTable:
+            tableName: quality_profiles
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  type: varchar(500)
+              - column:
+                  name: is_active
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+
+  # ── quality_config_items ───────────────────────────────
+  - changeSet:
+      id: 002-create-table-quality-config-items
+      author: quality-scanner
+      changes:
+        - createTable:
+            tableName: quality_config_items
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: profile_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tool
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: filename
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(500)
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: quality_config_items
+            baseColumnNames: profile_id
+            referencedTableName: quality_profiles
+            referencedColumnNames: id
+            constraintName: fk_config_items_profile_id
+            onDelete: CASCADE
+        - createIndex:
+            tableName: quality_config_items
+            indexName: idx_config_items_profile_id
+            columns:
+              - column:
+                  name: profile_id
+        - addUniqueConstraint:
+            tableName: quality_config_items
+            columnNames: profile_id, tool, filename
+            constraintName: uq_config_items_profile_tool_filename
+
+  # ── Add quality_profile_id FK to projects ──────────────
+  - changeSet:
+      id: 002-add-quality-profile-id-to-projects
+      author: quality-scanner
+      changes:
+        - addColumn:
+            tableName: projects
+            columns:
+              - column:
+                  name: quality_profile_id
+                  type: uuid
+        - addForeignKeyConstraint:
+            baseTableName: projects
+            baseColumnNames: quality_profile_id
+            referencedTableName: quality_profiles
+            referencedColumnNames: id
+            constraintName: fk_projects_quality_profile_id
+            onDelete: SET NULL

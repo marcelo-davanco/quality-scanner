@@ -1,0 +1,267 @@
+databaseChangeLog:
+  # ── Enum types ─────────────────────────────────────────
+  - changeSet:
+      id: 001-create-enum-scan-status
+      author: quality-scanner
+      changes:
+        - sql:
+            sql: >-
+              CREATE TYPE scan_status_enum AS ENUM
+              ('running', 'passed', 'passed_with_warnings', 'failed', 'skipped');
+
+  - changeSet:
+      id: 001-create-enum-phase-status
+      author: quality-scanner
+      changes:
+        - sql:
+            sql: >-
+              CREATE TYPE phase_status_enum AS ENUM
+              ('pass', 'fail', 'warn', 'skip');
+
+  # ── projects ───────────────────────────────────────────
+  - changeSet:
+      id: 001-create-table-projects
+      author: quality-scanner
+      changes:
+        - createTable:
+            tableName: projects
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: project_key
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: repository_url
+                  type: varchar(500)
+              - column:
+                  name: description
+                  type: varchar(500)
+              # ── SonarQube Settings ──
+              - column:
+                  name: sonar_host_url
+                  type: varchar(500)
+                  defaultValue: "http://sonarqube:9000"
+              - column:
+                  name: sonar_token
+                  type: varchar(500)
+              # ── Phase Toggles ──
+              - column:
+                  name: enable_gitleaks
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: enable_typescript
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: enable_eslint
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: enable_prettier
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: enable_audit
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: enable_knip
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: enable_jest
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: enable_sonarqube
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: enable_api_lint
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: enable_infra_scan
+                  type: boolean
+                  defaultValueBoolean: false
+              # ── Extra Config ──
+              - column:
+                  name: api_lint_severity
+                  type: varchar(50)
+                  defaultValue: "warn"
+              - column:
+                  name: infra_scan_severity
+                  type: varchar(50)
+                  defaultValue: "HIGH"
+              # ── Timestamps ──
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+
+  # ── scans ──────────────────────────────────────────────
+  - changeSet:
+      id: 001-create-table-scans
+      author: quality-scanner
+      changes:
+        - createTable:
+            tableName: scans
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: project_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scan_code
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: scan_status_enum
+                  defaultValue: "running"
+              - column:
+                  name: errors_count
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: warnings_count
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: duration_seconds
+                  type: int
+              - column:
+                  name: branch_name
+                  type: varchar(255)
+              - column:
+                  name: pr_key
+                  type: varchar(100)
+              - column:
+                  name: started_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finished_at
+                  type: timestamp with time zone
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: scans
+            baseColumnNames: project_id
+            referencedTableName: projects
+            referencedColumnNames: id
+            constraintName: fk_scans_project_id
+            onDelete: CASCADE
+        - createIndex:
+            tableName: scans
+            indexName: idx_scans_project_id
+            columns:
+              - column:
+                  name: project_id
+        - createIndex:
+            tableName: scans
+            indexName: idx_scans_created_at
+            columns:
+              - column:
+                  name: created_at
+                  descending: true
+
+  # ── phase_results ──────────────────────────────────────
+  - changeSet:
+      id: 001-create-table-phase-results
+      author: quality-scanner
+      changes:
+        - createTable:
+            tableName: phase_results
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scan_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tool
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: phase_status_enum
+                  constraints:
+                    nullable: false
+              - column:
+                  name: summary
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: jsonb
+                  defaultValue: "[]"
+              - column:
+                  name: duration_ms
+                  type: int
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: phase_results
+            baseColumnNames: scan_id
+            referencedTableName: scans
+            referencedColumnNames: id
+            constraintName: fk_phase_results_scan_id
+            onDelete: CASCADE
+        - createIndex:
+            tableName: phase_results
+            indexName: idx_phase_results_scan_id
+            columns:
+              - column:
+                  name: scan_id

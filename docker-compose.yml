@@ -118,8 +118,7 @@ services:
     volumes:
       - ./apps/api/liquibase:/liquibase/changelog
     command:
-      - --defaults-file=/liquibase/changelog/liquibase.properties
-      - --changelog-file=changelogs/db.changelog-master.yaml
+      - --changelog-file=changelog/changelogs/db.changelog-master.yaml
       - --url=jdbc:postgresql://api-db:5432/${API_DB_NAME:-quality_scanner}
       - --username=${API_DB_USER:-scanner}
       - --password=${API_DB_PASSWORD:-scanner}

@@ -1,0 +1,32 @@
+{
+  "name": "dashboard",
+  "root": "apps/dashboard",
+  "sourceRoot": "apps/dashboard/src",
+  "projectType": "application",
+  "targets": {
+    "dev": {
+      "command": "next dev",
+      "options": {
+        "cwd": "apps/dashboard"
+      }
+    },
+    "build": {
+      "command": "next build",
+      "options": {
+        "cwd": "apps/dashboard"
+      }
+    },
+    "start": {
+      "command": "next start",
+      "options": {
+        "cwd": "apps/dashboard"
+      }
+    },
+    "lint": {
+      "command": "next lint",
+      "options": {
+        "cwd": "apps/dashboard"
+      }
+    }
+  }
+}

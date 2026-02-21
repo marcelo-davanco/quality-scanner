@@ -1,0 +1,20 @@
+{
+  "name": "@quality-scanner/source",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "nx run-many --target=build",
+    "lint": "nx run-many --target=lint",
+    "test": "nx run-many --target=test"
+  },
+  "devDependencies": {
+    "nx": "^21.3.2",
+    "@nx/js": "^21.3.2",
+    "@nx/nest": "^21.3.2",
+    "@nx/next": "^21.3.2",
+    "typescript": "^5.7.0"
+  }
+}

@@ -41,7 +41,7 @@ services:
     restart: unless-stopped
 
   scanner:
-    build: ./scanner
+    build: ./apps/scanner
     image: ${SCANNER_IMAGE:-quality-scanner:latest}
     container_name: quality-scanner
     depends_on:

@@ -5,8 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Scan } from '../../scans/entities/scan.entity';
+import { QualityProfile } from '../../quality-profiles/entities/quality-profile.entity';
 
 @Entity('projects')
 export class Project {
@@ -71,6 +74,13 @@ export class Project {
   infraScanSeverity: string;
 
   // ── Relations ───────────────────────────────────────────
+  @Column({ type: 'uuid', nullable: true, name: 'quality_profile_id' })
+  qualityProfileId: string | null;
+
+  @ManyToOne(() => QualityProfile, (profile) => profile.projects, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'quality_profile_id' })
+  qualityProfile: QualityProfile | null;
+
   @OneToMany(() => Scan, (scan) => scan.project)
   scans: Scan[];
 

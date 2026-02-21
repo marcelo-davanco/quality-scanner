@@ -12,6 +12,5 @@ export default new DataSource({
   password: process.env.API_DB_PASSWORD || 'scanner',
   database: process.env.API_DB_NAME || 'quality_scanner',
   entities: [join(__dirname, '..', 'modules', '**', '*.entity.{ts,js}')],
-  migrations: [join(__dirname, '..', 'migrations', '*.{ts,js}')],
   synchronize: false,
 });

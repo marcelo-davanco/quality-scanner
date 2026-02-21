@@ -22,7 +22,7 @@ import { ScansModule } from './modules/scans/scans.module';
         password: config.get<string>('database.password'),
         database: config.get<string>('database.database'),
         autoLoadEntities: true,
-        synchronize: config.get<boolean>('database.synchronize'),
+        synchronize: false,
       }),
     }),
     ProjectsModule,

@@ -6,5 +6,4 @@ export default registerAs('database', () => ({
   username: process.env.API_DB_USER || 'scanner',
   password: process.env.API_DB_PASSWORD || 'scanner',
   database: process.env.API_DB_NAME || 'quality_scanner',
-  synchronize: process.env.API_DB_SYNC === 'true',
 }));

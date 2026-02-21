@@ -15,6 +15,7 @@ export enum ScanStatus {
   PASSED = 'passed',
   PASSED_WITH_WARNINGS = 'passed_with_warnings',
   FAILED = 'failed',
+  SKIPPED = 'skipped',
 }
 
 @Entity('scans')

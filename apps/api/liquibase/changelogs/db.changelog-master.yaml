@@ -1,7 +1,7 @@
 databaseChangeLog:
-  - include:
-      file: changelogs/v1.0.0/001-initial-schema.yaml
-      relativeToChangelogFile: false
-  - include:
-      file: changelogs/v1.1.0/001-quality-profiles.yaml
-      relativeToChangelogFile: false
+    - include:
+          file: v1.0.0/001-initial-schema.yaml
+          relativeToChangelogFile: true
+    - include:
+          file: v1.1.0/001-quality-profiles.yaml
+          relativeToChangelogFile: true
